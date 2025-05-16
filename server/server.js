@@ -15,7 +15,7 @@ const app = express();
 const port = process.env.PORT || 4000;
 await connectCloudinary();
 await connectDB();
-const allowedOrigins = [process.env.FRONTED_URL,process.env.BaCKEND_URL];
+const allowedOrigins = [process.env.FRONTED_URL,process.env.BACKEND_URL];
 //Middeware configuration
 app.use(express.json());
 app.use(cookieParser());
