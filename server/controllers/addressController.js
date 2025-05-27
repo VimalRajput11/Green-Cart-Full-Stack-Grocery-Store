@@ -28,3 +28,26 @@ export const getAddress = async (req,res) =>{
         res.json({success: false, message: error.message});
     }
 }
+
+
+export const updateAddress = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const addressId = req.params.id; 
+        const updatedData = req.body.address; 
+
+        const result = await Address.updateOne(
+            { _id: addressId, userId }, 
+            { $set: updatedData }       
+        );
+
+        if (result.nModified === 0) {
+            return res.json({ success: false, message: 'No address updated. Check ID or data.' });
+        }
+
+        res.json({ success: true, message: 'Address updated successfully' });
+    } catch (error) {
+        console.log(error.message);
+        res.json({ success: false, message: error.message });
+    }
+};
