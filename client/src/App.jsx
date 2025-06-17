@@ -62,7 +62,7 @@ const App = () => {
             <Route index element={isAgent ? <DeliveryAgentPage /> : null} />
             <Route path="delivered" element={<DeliveredOrders />} />
           </Route>
-          <Route path="*" element={<NotFound />} /> {/* Catch-all route */}
+          
         </Routes>
       </div>
 
