@@ -69,8 +69,7 @@ import vanilla_muffins_image from "./vanilla_muffins_image.png";
 import quinoa_image from "./quinoa_image.png";
 import brown_rice_image from "./brown_rice_image.png";
 import barley_image from "./barley_image.png";
-import Atta_Rice_image from "./Atta, Rice & Dal.png"
-
+import agent_icon from "./agent_icon.png"
 export const assets = {
   logo,
   search_icon,
@@ -80,6 +79,7 @@ export const assets = {
   star_dull_icon,
   cart_icon,
   nav_cart_icon,
+  agent_icon,
   add_icon,
   refresh_icon,
   product_list_icon,

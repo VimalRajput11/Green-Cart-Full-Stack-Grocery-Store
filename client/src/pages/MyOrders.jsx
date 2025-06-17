@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext';
 const StatusBadge = ({ status }) => {
   const statusStyles = {
     Delivered: 'bg-green-100 text-green-700',
-    Shipped: 'bg-yellow-100 text-yellow-700',
+    Picked: 'bg-yellow-100 text-yellow-700',
     Pending: 'bg-gray-100 text-gray-700',
   };
   return (
@@ -23,7 +23,7 @@ const getStatusStep = (status) => {
   switch (status) {
     case 'Pending':
       return 1;
-    case 'Shipped':
+    case 'Picked':
       return 2;
     case 'Delivered':
       return 3;
@@ -34,7 +34,7 @@ const getStatusStep = (status) => {
 
 const ProgressBar = ({ status }) => {
   const step = getStatusStep(status);
-  const steps = ['Pending', 'Shipped', 'Delivered'];
+  const steps = ['Pending', 'Picked', 'Delivered'];
 
   return (
     <div className="relative mt-4 w-full px-2">

@@ -10,16 +10,17 @@ import productRoute from './routes/productRoute.js';
 import cartRouter from './routes/cartRoute.js';
 import addressRouter from './routes/addressRoute.js';
 import orderRouter from './routes/orderRoute.js';
+import agentRouter from './routes/agentRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
 await connectCloudinary();
 await connectDB();
 const allowedOrigins = [process.env.FRONTEND_URL,process.env.BACKEND_URL];
-app.use(cors({
-  origin: 'https://green-cart-full-stack-grocery-store-d667.vercel.app',
-  credentials: true // if using cookies or sessions
-}));
+// app.use(cors({
+//   origin: 'https://green-cart-full-stack-grocery-store-d667.vercel.app',
+//   credentials: true // if using cookies or sessions
+// }));
 
 //Middeware configuration
 app.use(express.json());
@@ -33,7 +34,9 @@ app.use('/api/product', productRoute);
 app.use('/api/cart', cartRouter);
 app.use('/api/address', addressRouter);
 app.use('/api/order', orderRouter);
+app.use('/api/agents', agentRouter);
 
+app.use()
 app.listen(port, ()=>{
     console.log(`Server is running on http://localhost:${port}`);
     

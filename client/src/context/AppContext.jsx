@@ -16,6 +16,7 @@ export const AppContextProvider = ({children}) =>{
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [isSeller, setIsSeller] = useState(false);
+    const [isAgent, setIsAgent] = useState(false);
     const [showUserLogin, setShowUserLogin] = useState(false);
     const [products, setProducts] = useState([]);
     const [cartItems, setCartItems] = useState({});
@@ -34,6 +35,19 @@ export const AppContextProvider = ({children}) =>{
             setIsSeller(false)
         }
     }
+     const fetchAgent = async () => {
+        try {
+            const { data } = await axios.get('/api/agents/is-auth');
+            if (data.success) {
+                setIsAgent(true);
+            } else {
+                setIsAgent(false);
+            }
+        } catch (error) {
+            setIsAgent(false);
+        }
+    }
+
 
 
     //Fetch User Auth Status, User Data and Cart Items
@@ -123,6 +137,7 @@ export const AppContextProvider = ({children}) =>{
     useEffect(()=>{
         fetchSeller(),
         fetchProducts(),
+        fetchAgent()
         fetchUser()
     },[]);
 
@@ -149,7 +164,7 @@ export const AppContextProvider = ({children}) =>{
 
     const value = {navigate, user, setUser, isSeller, setIsSeller, showUserLogin, setShowUserLogin, products,
         currency, addToCart, updateCartItem, removeFromCart, cartItems, searchQuery, setSearchQuery, getCartAmount,
-        getCartCount, axios, fetchProducts, setCartItems 
+        getCartCount, axios, fetchProducts, setCartItems , isAgent, setIsAgent
     }
     return <AppContext.Provider value={value}>
         {children}

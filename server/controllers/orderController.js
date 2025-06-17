@@ -142,6 +142,7 @@ export const getUserOrders = async (req, res) => {
     })
       .populate({ path: "items.product", select: "name image category offerPrice" })
       .populate("address")
+       .populate("assignedTo", "name") 
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, orders });
