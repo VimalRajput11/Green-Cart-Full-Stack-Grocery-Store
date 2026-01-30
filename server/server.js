@@ -17,10 +17,10 @@ const port = process.env.PORT || 4000;
 await connectCloudinary();
 await connectDB();
 const allowedOrigins = [process.env.FRONTEND_URL,process.env.BACKEND_URL];
-app.use(cors({
-  origin: 'https://green-cart-full-stack-grocery-store-d667.vercel.app',
-  credentials: true // if using cookies or sessions
-}));
+// app.use(cors({
+//   origin: 'https://green-cart-full-stack-grocery-store-d667.vercel.app',
+//   credentials: true // if using cookies or sessions
+// }));
 
 //Middeware configuration
 app.use(express.json());

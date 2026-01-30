@@ -10,7 +10,7 @@ axios.defaults.baseURL = import.meta.env.VITE_SERVER_URL;
 
 export const AppContext = createContext();
 
-export const AppContextProvider = ({children}) =>{
+export const AppContextProvider = ({ children }) => {
 
     const currency = import.meta.env.VITE_CURRENCY;
     const navigate = useNavigate();
@@ -23,19 +23,19 @@ export const AppContextProvider = ({children}) =>{
     const [searchQuery, setSearchQuery] = useState({});
 
     //Fetch Seller Status
-    const fetchSeller = async()=>{
+    const fetchSeller = async () => {
         try {
-            const {data} = await axios.get('/api/seller/is-auth');
-            if(data.success){
+            const { data } = await axios.get('/api/seller/is-auth');
+            if (data.success) {
                 setIsSeller(true)
-            }else{
+            } else {
                 setIsSeller(false)
             }
         } catch (error) {
             setIsSeller(false)
         }
     }
-     const fetchAgent = async () => {
+    const fetchAgent = async () => {
         try {
             const { data } = await axios.get('/api/agents/is-auth');
             if (data.success) {
@@ -51,10 +51,10 @@ export const AppContextProvider = ({children}) =>{
 
 
     //Fetch User Auth Status, User Data and Cart Items
-    const fetchUser = async () =>{
+    const fetchUser = async () => {
         try {
-            const {data} = await axios.get('api/user/is-auth');
-            if(data.success){
+            const { data } = await axios.get('api/user/is-auth');
+            if (data.success) {
                 setUser(data.user);
                 setCartItems(data.user.cartItems)
             }
@@ -64,13 +64,13 @@ export const AppContextProvider = ({children}) =>{
     }
 
     //Fetch All Products
-    const fetchProducts = async ()=>{
+    const fetchProducts = async () => {
         try {
-            const {data} = await axios.get('/api/product/list')
-            if(data.success){
+            const { data } = await axios.get('/api/product/list')
+            if (data.success) {
                 setProducts(data.products)
             }
-            else{
+            else {
                 toast.error(data.message)
             }
         } catch (error) {
@@ -79,13 +79,18 @@ export const AppContextProvider = ({children}) =>{
     }
 
     //Add Product to Cart
-    const addToCart = (itemId)=>{
+    const addToCart = (itemId) => {
+        if (!user) {
+            setShowUserLogin(true);
+            return;
+        }
+
         let cartData = structuredClone(cartItems);
 
-        if(cartData[itemId]){
+        if (cartData[itemId]) {
             cartData[itemId] += 1;
         }
-        else{
+        else {
             cartData[itemId] = 1;
         }
         setCartItems(cartData);
@@ -93,19 +98,19 @@ export const AppContextProvider = ({children}) =>{
     }
 
     //Update Cart Item Quantity
-    const updateCartItem = (itemId, quantity) =>{
+    const updateCartItem = (itemId, quantity) => {
         let cartData = structuredClone(cartItems);
         cartData[itemId] = quantity;
-        setCartItems(cartData) 
+        setCartItems(cartData)
         toast.success('Cart Updated')
     }
 
     //Remove Products from Cart
-    const removeFromCart = (itemId) =>{
+    const removeFromCart = (itemId) => {
         let cartData = structuredClone(cartItems);
-        if(cartData[itemId]){
+        if (cartData[itemId]) {
             cartData[itemId] -= 1;
-            if(cartData[itemId] === 0){
+            if (cartData[itemId] === 0) {
                 delete cartData[itemId];
             }
         }
@@ -114,63 +119,64 @@ export const AppContextProvider = ({children}) =>{
     }
 
     //Get Cart Item Count
-    const getCartCount =()=>{
+    const getCartCount = () => {
         let totalCount = 0;
-        for(const item in cartItems){
+        for (const item in cartItems) {
             totalCount += cartItems[item];
         }
         return totalCount;
     }
 
     //Get Cart Total Amount
-    const getCartAmount = ()=>{
+    const getCartAmount = () => {
         let totalAmount = 0;
-        for(const items in cartItems){
+        for (const items in cartItems) {
             let itemInfo = products.find((product) => product._id === items);
-            if(cartItems[items] > 0){
+            if (cartItems[items] > 0) {
                 totalAmount += itemInfo.offerPrice * cartItems[items];
             }
         }
         return Math.floor(totalAmount * 100) / 100;
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         fetchSeller(),
-        fetchProducts(),
-        fetchAgent()
+            fetchProducts(),
+            fetchAgent()
         fetchUser()
-    },[]);
+    }, []);
 
     //Update Database Cart Items
-    useEffect(()=>{
-        const updateCart = async () =>{
-        try {
-            const {data} = await axios.post('/api/cart/update', {
-                userId: user._id,
-                cartItems,
-            });
-            if(!data.success){
-                toast.error(data.message)
+    useEffect(() => {
+        const updateCart = async () => {
+            try {
+                const { data } = await axios.post('/api/cart/update', {
+                    userId: user._id,
+                    cartItems,
+                });
+                if (!data.success) {
+                    toast.error(data.message)
+                }
+            } catch (error) {
+                toast.error(error.message)
             }
-        } catch (error) {
-            toast.error(error.message)
         }
-    }
-    if(user){
-        updateCart()
-    }
+        if (user) {
+            updateCart()
+        }
     }, [cartItems])
 
 
-    const value = {navigate, user, setUser, isSeller, setIsSeller, showUserLogin, setShowUserLogin, products,
+    const value = {
+        navigate, user, setUser, isSeller, setIsSeller, showUserLogin, setShowUserLogin, products,
         currency, addToCart, updateCartItem, removeFromCart, cartItems, searchQuery, setSearchQuery, getCartAmount,
-        getCartCount, axios, fetchProducts, setCartItems , isAgent, setIsAgent
+        getCartCount, axios, fetchProducts, setCartItems, isAgent, setIsAgent
     }
     return <AppContext.Provider value={value}>
         {children}
     </AppContext.Provider>
 }
 
-export const useAppContext = ()=>{
+export const useAppContext = () => {
     return useContext(AppContext);
 }
