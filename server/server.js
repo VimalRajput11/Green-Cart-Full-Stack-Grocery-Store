@@ -16,18 +16,21 @@ const app = express();
 const port = process.env.PORT || 4000;
 await connectCloudinary();
 await connectDB();
-const allowedOrigins = [process.env.FRONTEND_URL,process.env.BACKEND_URL];
-app.use(cors({
-  origin: ['https://green-cart-full-stack-grocery-store-d667.vercel.app','https://green-cart-full-stack-grocery-store.vercel.app'],
-  credentials: true // if using cookies or sessions
-}));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://greencartstore.vercel.app',
+  'https://green-cart-full-stack-grocery-store.vercel.app',
+  process.env.FRONTEND_URL,
+  process.env.BACKEND_URL
+].filter(Boolean);
 
 //Middeware configuration
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({origin: allowedOrigins, credentials: true}));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
-app.get('/', (req,res) => res.send('API is working'));
+app.get('/', (req, res) => res.send('API is working'));
 app.use('/api/user', userRouter);
 app.use('/api/seller', sellerRouter);
 app.use('/api/product', productRoute);
@@ -36,7 +39,7 @@ app.use('/api/address', addressRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/agents', agentRouter);
 
-app.listen(port, ()=>{
-    console.log(`Server is running on http://localhost:${port}`);
-    
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+
 });
