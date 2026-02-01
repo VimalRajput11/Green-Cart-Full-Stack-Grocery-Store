@@ -284,6 +284,46 @@ export const agentLogout = (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 };
 
+// Agent updates their own status (Available/Inactive)
+export const updateOwnStatus = async (req, res) => {
+  try {
+    const agentId = req.userId; // Set by authAgent middleware
+    const { status } = req.body;
+
+    // Validate status
+    if (!['Available', 'Inactive'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be "Available" or "Inactive"'
+      });
+    }
+
+    const agent = await DeliveryAgent.findByIdAndUpdate(
+      agentId,
+      { status },
+      { new: true }
+    );
+
+    if (!agent) {
+      return res.status(404).json({ success: false, message: 'Agent not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Status updated successfully',
+      agent: {
+        _id: agent._id,
+        name: agent.name,
+        phone: agent.phone,
+        status: agent.status
+      }
+    });
+  } catch (error) {
+    console.error('Error updating own status:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 
 // Mark order as paid (or delivered) by order ID
 export const markOrderPaid = async (req, res) => {

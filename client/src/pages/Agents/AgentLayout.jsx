@@ -43,7 +43,7 @@ const AgentLayout = () => {
   const toggleStatus = async () => {
     try {
       const newStatus = agent?.status === 'Available' ? 'Inactive' : 'Available';
-      const { data } = await axios.patch(`/api/agents/status/${agent._id}`, { status: newStatus });
+      const { data } = await axios.patch('/api/agents/my-status', { status: newStatus }, { withCredentials: true });
 
       if (data.success) {
         setAgent({ ...agent, status: newStatus });

@@ -16,7 +16,8 @@ import {
   createRazorpayOrder,
   verifyPayment,
   changePassword,
-  deleteDeliveredOrder
+  deleteDeliveredOrder,
+  updateOwnStatus
 } from '../controllers/agentController.js';
 import { authAgent } from '../middlewares/authAgent.js';
 import authSeller from '../middlewares/authSeller.js';
@@ -27,6 +28,7 @@ router.post('/login', loginAgent);
 router.get('/is-auth', authAgent, isAgentAuth);
 router.get('/logout', authAgent, agentLogout);
 router.post('/change-password', authAgent, changePassword);
+router.patch('/my-status', authAgent, updateOwnStatus); // Agent updates their own status
 
 // Seller/Admin routes
 router.get('/', authSeller, getAgents);
