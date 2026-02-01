@@ -5,7 +5,7 @@ import { assets } from '../assets/assets';
 const MyOrders = () => {
   const [myOrders, setMyOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const { currency, axios, user } = useAppContext();
+  const { currency, axios, user, confirmAction } = useAppContext();
   const [loading, setLoading] = useState(true);
 
   const fetchMyOrders = async () => {
@@ -22,15 +22,21 @@ const MyOrders = () => {
   };
 
   const deleteOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to remove this order from your history?')) return;
-    try {
-      const { data } = await axios.delete(`/api/order/user/${orderId}`);
-      if (data.success) {
-        fetchMyOrders();
-      }
-    } catch (error) {
-      console.log(error);
-    }
+    confirmAction(
+      "Remove Order",
+      "Are you sure you want to remove this order from your history?",
+      async () => {
+        try {
+          const { data } = await axios.delete(`/api/order/user/${orderId}`);
+          if (data.success) {
+            fetchMyOrders();
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      },
+      'danger'
+    );
   };
 
   useEffect(() => {
@@ -64,14 +70,17 @@ const MyOrders = () => {
         {myOrders.some(o => ['Delivered', 'Cancelled'].includes(o.status)) && (
           <button
             onClick={() => {
-              if (window.confirm('Clear all completed/cancelled orders from history?')) {
-                myOrders.forEach(async (o) => {
-                  if (['Delivered', 'Cancelled'].includes(o.status)) {
+              confirmAction(
+                "Clear History",
+                "Are you sure you want to clear all completed/cancelled orders from your history?",
+                async () => {
+                  const itemsToClear = myOrders.filter(o => ['Delivered', 'Cancelled'].includes(o.status));
+                  for (const o of itemsToClear) {
                     await axios.delete(`/api/order/user/${o._id}`);
                   }
-                });
-                setTimeout(fetchMyOrders, 500);
-              }
+                  fetchMyOrders();
+                }
+              );
             }}
             className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full border border-red-100 transition flex items-center gap-2"
           >

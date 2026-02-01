@@ -60,6 +60,10 @@ const orderSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  deletedBySeller: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 const Order = mongoose.models.order || mongoose.model('Order', orderSchema);

@@ -5,7 +5,7 @@ import { assets } from '../../assets/assets';
 import { useNavigate } from 'react-router-dom';
 
 const ProductList = () => {
-  const { products, currency, axios, fetchProducts } = useAppContext();
+  const { products, currency, axios, fetchProducts, confirmAction } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [loading, setLoading] = useState(false);
@@ -29,32 +29,24 @@ const ProductList = () => {
   };
 
   const deleteProduct = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
-
-    try {
-      // Assuming you have a delete endpoint, if not, this is a placeholder
-      // You might need to add this endpoint to your backend if it doesn't exist
-      // For now, I'll assume standard REST: DELETE /api/product/:id
-      // If the user hasn't implemented it, this might 404, but it's a standard feature request.
-      // Let's check agentRoutes.js or product routes if possible. 
-      // Wait, I don't have access to backend code easily to verify without reading.
-      // I'll assume the user wants me to ADD the feature. I'll add the UI first.
-
-      /* 
-         Standard MERN usually has this. 
-         The user asked to "add more feature", so adding the UI for delete is part of that.
-      */
-      const { data } = await axios.delete(`/api/product/remove/${id}`);
-      if (data.success) {
-        toast.success("Product Deleted");
-        fetchProducts();
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      // If 404, it means endpoint doesn't exist. I'll just show a toast.
-      toast.error(error.response?.data?.message || "Delete failed");
-    }
+    confirmAction(
+      "Delete Product",
+      "Are you sure you want to delete this product? This action cannot be undone.",
+      async () => {
+        try {
+          const { data } = await axios.delete(`/api/product/remove/${id}`);
+          if (data.success) {
+            toast.success("Product Deleted");
+            fetchProducts();
+          } else {
+            toast.error(data.message);
+          }
+        } catch (error) {
+          toast.error(error.response?.data?.message || "Delete failed");
+        }
+      },
+      'danger'
+    );
   };
 
   // Filter logic

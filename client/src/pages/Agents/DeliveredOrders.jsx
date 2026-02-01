@@ -7,7 +7,7 @@ import { assets } from "../../assets/assets";
 import { useNavigate } from "react-router-dom";
 
 const DeliveredOrders = () => {
-  const { axios } = useAppContext();
+  const { axios, confirmAction } = useAppContext();
   const [deliveredOrders, setDeliveredOrders] = useState([]);
   const [agent, setAgent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,20 +44,24 @@ const DeliveredOrders = () => {
   }, []);
 
   const deleteOrder = async (orderId) => {
-    if (!window.confirm("Are you sure you want to delete this order?")) return;
-
-    try {
-      const { data } = await axios.delete(`/api/agents/order/${orderId}`);
-      if (data.success) {
-        toast.success("Order deleted successfully");
-        // Remove from local state
-        setDeliveredOrders(deliveredOrders.filter(order => order._id !== orderId));
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete order");
-    }
+    confirmAction(
+      "Remove Order",
+      "Are you sure you want to remove this order from your delivery history?",
+      async () => {
+        try {
+          const { data } = await axios.delete(`/api/agents/order/${orderId}`);
+          if (data.success) {
+            toast.success("Order deleted successfully");
+            setDeliveredOrders(deliveredOrders.filter(order => order._id !== orderId));
+          } else {
+            toast.error(data.message);
+          }
+        } catch (error) {
+          toast.error(error.response?.data?.message || "Failed to delete order");
+        }
+      },
+      'danger'
+    );
   };
 
   if (loading) return <div className="p-6">Loading delivered orders...</div>;

@@ -22,15 +22,23 @@ const SellerDashboard = () => {
                 const allOrders = data.orders;
                 setOrders(allOrders);
 
-                const totalSales = allOrders.reduce((acc, order) => acc + (order.isPaid ? order.amount : 0), 0);
-                const pending = allOrders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length;
-
-                setStats({
-                    totalSales,
-                    totalOrders: allOrders.length,
-                    pendingOrders: pending,
-                    productsCount: products.length // rough estimate from context
-                });
+                // Use robust backend calculation for stats (includes hidden orders)
+                if (data.stats) {
+                    setStats({
+                        ...data.stats,
+                        productsCount: products.length
+                    });
+                } else {
+                    // Fallback to client-side if stats are missing
+                    const totalSales = allOrders.reduce((acc, order) => acc + (order.isPaid ? order.amount : 0), 0);
+                    const pending = allOrders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length;
+                    setStats({
+                        totalSales,
+                        totalOrders: allOrders.length,
+                        pendingOrders: pending,
+                        productsCount: products.length
+                    });
+                }
             }
         } catch (error) {
             console.error(error);

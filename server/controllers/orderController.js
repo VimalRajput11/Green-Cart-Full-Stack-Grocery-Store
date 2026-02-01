@@ -153,20 +153,34 @@ export const getUserOrders = async (req, res) => {
   }
 };
 
-// Admin: Get all orders
+// Admin/Seller: Get all orders + stats
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find({
+    const baseQuery = {
       $or: [
-        { paymentType: "COD" }, // Show all COD orders, regardless of payment status
+        { paymentType: "COD" }, // Show all COD orders
         { paymentType: "Online", isPaid: true } // Only show paid online orders
       ],
+    };
+
+    // Calculate stats from ALL valid orders (including hidden ones)
+    const allValidOrders = await Order.find(baseQuery);
+    const stats = {
+      totalSales: allValidOrders.reduce((acc, order) => acc + (order.isPaid ? order.amount : 0), 0),
+      totalOrders: allValidOrders.length,
+      pendingOrders: allValidOrders.filter(o => !['Delivered', 'Cancelled'].includes(o.status)).length
+    };
+
+    // Fetch visible orders for the seller list
+    const orders = await Order.find({
+      ...baseQuery,
+      deletedBySeller: { $ne: true }
     })
       .populate("items.product address")
       .populate("assignedTo", "name phone")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, orders });
+    res.status(200).json({ success: true, orders, stats });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching all orders", error: error.message });
   }
@@ -201,17 +215,17 @@ export const updateOrderStatus = async (req, res) => {
 export const deleteDeliveredOrders = async (req, res) => {
   try {
     const result = await Order.updateMany(
-      { status: 'Delivered', deletedByUser: false },
-      { $set: { deletedByUser: true } }
+      { status: 'Delivered', deletedBySeller: { $ne: true } },
+      { $set: { deletedBySeller: true } }
     );
 
     if (result.matchedCount === 0) {
       return res.status(404).json({ success: false, message: "No delivered orders found to clear" });
     }
 
-    res.status(200).json({ success: true, message: `${result.modifiedCount} delivered orders cleared from history` });
+    res.status(200).json({ success: true, message: `${result.modifiedCount} delivered orders cleared from your view` });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error deleting delivered orders", error: error.message });
+    res.status(500).json({ success: false, message: "Error clearing delivered orders", error: error.message });
   }
 };
 

@@ -1,9 +1,9 @@
 import { useContext, useEffect, useState } from "react";
-import { Children, createContext } from "react";
+import { createContext } from "react";
 import { useNavigate } from 'react-router-dom';
-import { dummyProducts } from "../assets/assets";
 import toast from "react-hot-toast";
 import axios from 'axios';
+import CustomAlert from "../components/CustomAlert";
 
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = import.meta.env.VITE_SERVER_URL;
@@ -22,6 +22,20 @@ export const AppContextProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState({});
     const [searchQuery, setSearchQuery] = useState("");
     const [categories, setCategories] = useState([]);
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: () => { }, type: 'confirm' });
+
+    const confirmAction = (title, message, onConfirm, type = 'confirm') => {
+        setAlertConfig({
+            isOpen: true,
+            title,
+            message,
+            onConfirm: () => {
+                onConfirm();
+                setAlertConfig(prev => ({ ...prev, isOpen: false }));
+            },
+            type
+        });
+    };
 
     //Fetch Seller Status
     const fetchSeller = async () => {
@@ -48,8 +62,6 @@ export const AppContextProvider = ({ children }) => {
             setIsAgent(false);
         }
     }
-
-
 
     //Fetch All Categories
     const fetchCategories = async () => {
@@ -175,11 +187,11 @@ export const AppContextProvider = ({ children }) => {
     }
 
     useEffect(() => {
-        fetchSeller(),
-            fetchProducts(),
-            fetchAgent(),
-            fetchCategories()
-        fetchUser()
+        fetchSeller();
+        fetchProducts();
+        fetchAgent();
+        fetchCategories();
+        fetchUser();
     }, []);
 
     //Update Database Cart Items
@@ -206,12 +218,22 @@ export const AppContextProvider = ({ children }) => {
     const value = {
         navigate, user, setUser, isSeller, setIsSeller, showUserLogin, setShowUserLogin, products,
         currency, addToCart, batchAddToCart, updateCartItem, removeFromCart, cartItems, searchQuery, setSearchQuery, getCartAmount,
-        getCartCount, axios, fetchProducts, setCartItems, isAgent, setIsAgent, categories, getCategories: fetchCategories
+        getCartCount, axios, fetchProducts, setCartItems, isAgent, setIsAgent, categories, getCategories: fetchCategories, confirmAction
     }
-    return <AppContext.Provider value={value}>
-        {children}
-    </AppContext.Provider>
-}
+    return (
+        <AppContext.Provider value={value}>
+            <CustomAlert
+                isOpen={alertConfig.isOpen}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                onConfirm={alertConfig.onConfirm}
+                onCancel={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+                type={alertConfig.type}
+            />
+            {children}
+        </AppContext.Provider>
+    );
+};
 
 export const useAppContext = () => {
     return useContext(AppContext);

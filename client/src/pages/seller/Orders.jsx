@@ -4,7 +4,7 @@ import { assets } from '../../assets/assets';
 import toast from 'react-hot-toast';
 
 const Orders = () => {
-  const { currency, axios } = useAppContext();
+  const { currency, axios, confirmAction } = useAppContext();
   const [orders, setOrders] = useState([]);
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,19 +60,23 @@ const Orders = () => {
   };
 
   const deleteAllDelivered = async () => {
-    if (!window.confirm("Are you sure you want to delete ALL delivered orders? This action cannot be undone.")) return;
-
-    try {
-      const { data } = await axios.delete('/api/order/delete-delivered');
-      if (data.success) {
-        toast.success(data.message);
-        fetchOrders();
-      } else {
-        toast.error(data.message);
+    confirmAction(
+      "Clear History",
+      "Are you sure you want to clear all delivered orders from your view? This will not affect your revenue statistics.",
+      async () => {
+        try {
+          const { data } = await axios.delete('/api/order/delete-delivered');
+          if (data.success) {
+            toast.success(data.message);
+            fetchOrders();
+          } else {
+            toast.error(data.message);
+          }
+        } catch (error) {
+          toast.error(error.message);
+        }
       }
-    } catch (error) {
-      toast.error(error.message);
-    }
+    );
   };
 
   useEffect(() => {
@@ -278,9 +282,12 @@ const Orders = () => {
                     {order.status !== 'Cancelled' && order.status !== 'Delivered' && (
                       <button
                         onClick={() => {
-                          if (window.confirm('Are you sure you want to cancel this order?')) {
-                            updateStatus(order._id, 'Cancelled');
-                          }
+                          confirmAction(
+                            "Cancel Order",
+                            "Are you sure you want to cancel this order? This action cannot be undone.",
+                            () => updateStatus(order._id, 'Cancelled'),
+                            'danger'
+                          );
                         }}
                         className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 border border-red-200 transition"
                       >
