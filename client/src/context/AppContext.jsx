@@ -6,7 +6,9 @@ import axios from 'axios';
 import CustomAlert from "../components/CustomAlert";
 
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = import.meta.env.VITE_SERVER_URL;
+const backendUrl = import.meta.env.VITE_SERVER_URL;
+console.log("Backend URL initialized at:", backendUrl);
+axios.defaults.baseURL = backendUrl;
 
 export const AppContext = createContext();
 
