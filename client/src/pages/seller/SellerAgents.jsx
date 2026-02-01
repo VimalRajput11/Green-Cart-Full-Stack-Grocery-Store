@@ -12,19 +12,23 @@ const SellerAgents = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, agentId: null, agentName: '' });
 
-  const fetchAgents = async () => {
+  const fetchAgents = async (isManualRefresh = false) => {
     try {
+      if (isManualRefresh) setRefreshing(true);
       const { data } = await axios.get('/api/agents');
       if (data.success) {
         setAgents(data.agents);
         setFilteredAgents(data.agents);
+        if (isManualRefresh) toast.success('Agent list refreshed');
       }
     } catch (err) {
-      toast.error("Failed to fetch agents");
+      if (!isManualRefresh) toast.error("Failed to fetch agents");
     } finally {
       setLoading(false);
+      if (isManualRefresh) setRefreshing(false);
     }
   };
 
@@ -62,6 +66,13 @@ const SellerAgents = () => {
 
   useEffect(() => {
     fetchAgents();
+
+    // Poll for updates every 10 seconds
+    const interval = setInterval(() => {
+      fetchAgents(false); // Silent refresh
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -87,13 +98,27 @@ const SellerAgents = () => {
           <h1 className="text-2xl font-bold text-gray-800">Delivery Fleet</h1>
           <p className="text-gray-500 text-sm">Manage your delivery agents and track their status.</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-primary text-white px-6 py-2.5 rounded-full font-medium shadow-md hover:bg-primary-dull transition flex items-center gap-2"
-        >
-          <img src={assets.add_icon} className="w-5 h-5 brightness-0 invert" alt="" />
-          {showAddForm ? 'Cancel' : 'Add New Agent'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => fetchAgents(true)}
+            disabled={refreshing}
+            className="bg-white text-gray-700 px-4 py-2.5 rounded-full font-medium shadow-md hover:bg-gray-50 transition flex items-center gap-2 border border-gray-200 disabled:opacity-50"
+          >
+            <img
+              src={assets.refresh_icon}
+              className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`}
+              alt=""
+            />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-primary text-white px-6 py-2.5 rounded-full font-medium shadow-md hover:bg-primary-dull transition flex items-center gap-2"
+          >
+            <img src={assets.add_icon} className="w-5 h-5 brightness-0 invert" alt="" />
+            {showAddForm ? 'Cancel' : 'Add New Agent'}
+          </button>
+        </div>
       </div>
 
       {/* Stats & Search Row */}

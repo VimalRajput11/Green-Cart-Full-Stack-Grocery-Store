@@ -241,6 +241,7 @@ export const loginAgent = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
+
     res.json({
       success: true,
       message: 'Login successful',
@@ -248,6 +249,7 @@ export const loginAgent = async (req, res) => {
         _id: agent._id,
         name: agent.name,
         phone: agent.phone,
+        status: agent.status,
       },
     });
   } catch (error) {
@@ -269,6 +271,7 @@ export const isAgentAuth = (req, res) => {
       _id: req.agent._id,
       name: req.agent.name,
       phone: req.agent.phone,
+      status: req.agent.status,
     },
   });
 };
