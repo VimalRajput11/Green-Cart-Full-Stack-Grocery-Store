@@ -10,20 +10,26 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch order data
-  const fetchOrders = async () => {
+  const fetchOrders = async (isManualRefresh = false) => {
     try {
+      if (isManualRefresh) setRefreshing(true);
       const { data } = await axios.get('/api/order/seller');
       if (data.success) {
-        setOrders(data.orders.reverse());
+        // Backend already uses .sort({ createdAt: -1 }), so newest are first
+        setOrders(data.orders);
+        if (isManualRefresh) toast.success('Orders refreshed');
       } else {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      if (!isManualRefresh) console.error("Failed to fetch orders:", error.message);
+      else toast.error(error.message);
     } finally {
       setLoading(false);
+      if (isManualRefresh) setRefreshing(false);
     }
   };
 
@@ -72,6 +78,13 @@ const Orders = () => {
   useEffect(() => {
     fetchOrders();
     fetchAgents();
+
+    // Poll for updates every 10 seconds
+    const interval = setInterval(() => {
+      fetchOrders(false); // Silent refresh
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const filteredOrders = filterStatus === 'All'
@@ -87,9 +100,23 @@ const Orders = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex flex-col gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
-          <p className="text-gray-500 text-sm">Track and manage customer orders efficiently.</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
+            <p className="text-gray-500 text-sm">Track and manage customer orders efficiently.</p>
+          </div>
+          <button
+            onClick={() => fetchOrders(true)}
+            disabled={refreshing}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-full border border-gray-200 hover:bg-gray-50 transition text-sm font-medium shadow-sm disabled:opacity-50"
+          >
+            <img
+              src={assets.refresh_icon}
+              className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+              alt=""
+            />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
 
         {/* Filter Tabs */}
@@ -199,11 +226,11 @@ const Orders = () => {
                   <div>
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Customer Details</h3>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p className="font-medium text-gray-800">{order.address.firstName} {order.address.lastName}</p>
-                      <p>{order.address.street}</p>
-                      <p>{order.address.city}, {order.address.state} {order.address.zipcode}</p>
+                      <p className="font-medium text-gray-800">{order.address?.firstName} {order.address?.lastName}</p>
+                      <p>{order.address?.street}</p>
+                      <p>{order.address?.city}, {order.address?.state} {order.address?.zipcode}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100">{order.address.phone}</span>
+                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100">{order.address?.phone}</span>
                       </div>
                     </div>
                   </div>
@@ -303,10 +330,10 @@ const Orders = () => {
               <div className="grid grid-cols-2 gap-8 mb-8">
                 <div>
                   <h3 className="font-bold text-gray-700 text-sm uppercase mb-2">Bill To:</h3>
-                  <p className="font-medium">{selectedOrder.address.firstName} {selectedOrder.address.lastName}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.address.street}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.address.city}, {selectedOrder.address.state}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.address.phone}</p>
+                  <p className="font-medium">{selectedOrder.address?.firstName} {selectedOrder.address?.lastName}</p>
+                  <p className="text-sm text-gray-600">{selectedOrder.address?.street}</p>
+                  <p className="text-sm text-gray-600">{selectedOrder.address?.city}, {selectedOrder.address?.state}</p>
+                  <p className="text-sm text-gray-600">{selectedOrder.address?.phone}</p>
                 </div>
                 <div className="text-right">
                   <h3 className="font-bold text-gray-700 text-sm uppercase mb-2">Payment:</h3>

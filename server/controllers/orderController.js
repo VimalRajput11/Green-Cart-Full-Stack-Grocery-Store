@@ -33,6 +33,7 @@ export const addOrder = async (req, res) => {
       address,
       amount,
       paymentType: "COD",
+      // isPaid will default to false, agent will mark it true after collecting cash
     });
 
     res.status(200).json({ success: true, message: "Order placed successfully (COD)" });
@@ -155,9 +156,13 @@ export const getUserOrders = async (req, res) => {
 export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find({
-      $or: [{ paymentType: "COD" }, { isPaid: true }],
+      $or: [
+        { paymentType: "COD" }, // Show all COD orders, regardless of payment status
+        { paymentType: "Online", isPaid: true } // Only show paid online orders
+      ],
     })
       .populate("items.product address")
+      .populate("assignedTo", "name phone")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, orders });
@@ -169,10 +174,15 @@ export const getAllOrders = async (req, res) => {
 
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { orderId } = req.params;
-    const { status } = req.body;
+    const { orderId: paramId } = req.params;
+    const { orderId: bodyId, status } = req.body;
+    const orderId = paramId || bodyId;
 
-    const validStatuses = ['Order Placed', 'Shipped', 'Delivered'];
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "Order ID is required" });
+    }
+
+    const validStatuses = ['Order Placed', 'Picked', 'Out for Delivery', 'Arriving', 'Reached Location', 'Delivered', 'Cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
@@ -198,5 +208,30 @@ export const deleteDeliveredOrders = async (req, res) => {
     res.status(200).json({ success: true, message: `${result.deletedCount} delivered orders deleted successfully` });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error deleting delivered orders", error: error.message });
+  }
+};
+
+// User: Delete specific order from history
+export const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.userId;
+
+    const order = await Order.findOne({ _id: orderId, userId });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found or not authorized" });
+    }
+
+    // Optional: Only allow deletion if Delivered or Cancelled
+    if (!['Delivered', 'Cancelled'].includes(order.status)) {
+      return res.status(400).json({ success: false, message: "Active orders cannot be deleted from history" });
+    }
+
+    await Order.findByIdAndDelete(orderId);
+
+    res.status(200).json({ success: true, message: "Order deleted from history" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error deleting order", error: error.message });
   }
 };

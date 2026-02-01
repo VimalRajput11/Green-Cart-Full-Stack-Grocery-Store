@@ -49,7 +49,7 @@ const DeliveryAgentPage = () => {
     return () => clearInterval(interval);
   }, [agent]);
 
-  const fetchOrders = async (agentId) => {
+  const fetchOrders = async (agentId, showToast = false) => {
     setRefreshing(true);
     try {
       setLoadingOrderIds([]); // Clear any loading states
@@ -62,11 +62,11 @@ const DeliveryAgentPage = () => {
             order.status !== "Delivered"
         );
         setOrders(visibleOrders);
-        toast.success('Orders refreshed!');
+        if (showToast) toast.success('Orders refreshed!');
       }
     } catch (error) {
       console.error(error);
-      toast.error('Failed to refresh orders');
+      if (showToast) toast.error('Failed to refresh orders');
     } finally {
       setRefreshing(false);
     }
@@ -234,7 +234,7 @@ const DeliveryAgentPage = () => {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
           </button>
           <button
-            onClick={() => fetchOrders(agent._id)}
+            onClick={() => fetchOrders(agent._id, true)}
             className="text-primary p-2 hover:bg-primary/10 rounded-full transition"
             title="Refresh Orders"
             disabled={refreshing}

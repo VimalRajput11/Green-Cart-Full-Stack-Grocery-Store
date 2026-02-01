@@ -21,6 +21,18 @@ const MyOrders = () => {
     }
   };
 
+  const deleteOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to remove this order from your history?')) return;
+    try {
+      const { data } = await axios.delete(`/api/order/user/${orderId}`);
+      if (data.success) {
+        fetchMyOrders();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchMyOrders();
@@ -44,9 +56,29 @@ const MyOrders = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-screen">
       {/* Page Header */}
-      <div className="mb-8 border-b border-gray-200 pb-4">
-        <h1 className="text-3xl font-bold text-gray-900">Order History</h1>
-        <p className="text-gray-500 mt-1">Check the status of recent orders.</p>
+      <div className="mb-8 border-b border-gray-200 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Order History</h1>
+          <p className="text-gray-500 mt-1">Check the status of recent orders.</p>
+        </div>
+        {myOrders.some(o => ['Delivered', 'Cancelled'].includes(o.status)) && (
+          <button
+            onClick={() => {
+              if (window.confirm('Clear all completed/cancelled orders from history?')) {
+                myOrders.forEach(async (o) => {
+                  if (['Delivered', 'Cancelled'].includes(o.status)) {
+                    await axios.delete(`/api/order/user/${o._id}`);
+                  }
+                });
+                setTimeout(fetchMyOrders, 500);
+              }
+            }}
+            className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full border border-red-100 transition flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            Clear All History
+          </button>
+        )}
       </div>
 
       {/* Empty State */}
@@ -221,16 +253,28 @@ const MyOrders = () => {
                     )
                   )}
 
-                  {/* Download Invoice Button - Only for Delivered Orders */}
-                  {order.status === 'Delivered' && (
-                    <button
-                      onClick={() => setSelectedOrder(order)}
-                      className="w-full py-3 bg-white border-2 border-green-500 text-green-600 font-bold rounded-xl hover:bg-green-50 transition flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                      Download Invoice
-                    </button>
-                  )}
+                  {/* Actions Column */}
+                  <div className="flex flex-col gap-3">
+                    {order.status === 'Delivered' && (
+                      <button
+                        onClick={() => setSelectedOrder(order)}
+                        className="w-full py-3 bg-white border-2 border-green-500 text-green-600 font-bold rounded-xl hover:bg-green-50 transition flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Download Invoice
+                      </button>
+                    )}
+
+                    {['Delivered', 'Cancelled'].includes(order.status) && (
+                      <button
+                        onClick={() => deleteOrder(order._id)}
+                        className="w-full py-3 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 transition flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Remove from History
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

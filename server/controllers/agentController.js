@@ -187,14 +187,29 @@ export const getVisibleOrdersForAgent = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Agent not found' });
     }
 
+    // Fallback to very old date if createdAt is missing
+    const agentRegistrationDate = agent.createdAt || new Date(0);
+
     const orders = await Order.find({
-      $or: [
+      $and: [
+        // Only show valid orders (all COD orders or paid online orders)
         {
-          assignedTo: null,
-          createdAt: { $gte: agent.createdAt } // Only show unassigned orders created after agent registration
+          $or: [
+            { paymentType: 'COD' }, // Show all COD orders, regardless of payment status
+            { paymentType: 'Online', isPaid: true } // Only show paid online orders
+          ]
         },
-        { assignedTo: agentId } // Show orders assigned to this agent
-      ],
+        // Show unassigned orders created after agent registration OR orders assigned to this agent
+        {
+          $or: [
+            {
+              assignedTo: null,
+              createdAt: { $gte: agentRegistrationDate }
+            },
+            { assignedTo: agentId }
+          ]
+        }
+      ]
     })
       .populate('items.product')
       .populate('address')
