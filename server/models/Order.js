@@ -30,10 +30,10 @@ const orderSchema = new mongoose.Schema({
   },
 
   status: {
-  type: String,
-  enum: ['Order Placed', 'Picked', 'Shipped', 'Delivered'],  
-  default: 'Order Placed',
-},
+    type: String,
+    enum: ['Order Placed', 'Picked', 'Out for Delivery', 'Arriving', 'Reached Location', 'Delivered', 'Cancelled'],
+    default: 'Order Placed',
+  },
 
   paymentType: {
     type: String,
@@ -48,10 +48,10 @@ const orderSchema = new mongoose.Schema({
     paymentId: { type: String },
   },
   assignedTo: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'DeliveryAgent', 
-  default: null,
-},
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryAgent',
+    default: null,
+  },
 }, { timestamps: true });
 
 const Order = mongoose.models.order || mongoose.model('Order', orderSchema);

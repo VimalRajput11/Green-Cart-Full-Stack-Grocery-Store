@@ -6,7 +6,7 @@ import crypto from "crypto";
 
 // Razorpay instance
 const razorpayInstance = new Razorpay({
-  key_id:process.env.RAZORPAY_API_KEY,
+  key_id: process.env.RAZORPAY_API_KEY,
   key_secret: process.env.RAZORPAY_API_SECRET,
 });
 
@@ -142,7 +142,7 @@ export const getUserOrders = async (req, res) => {
     })
       .populate({ path: "items.product", select: "name image category offerPrice" })
       .populate("address")
-       .populate("assignedTo", "name") 
+      .populate("assignedTo", "name")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, orders });
@@ -185,5 +185,18 @@ export const updateOrderStatus = async (req, res) => {
     res.status(200).json({ success: true, message: "Order status updated", order });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update order status", error: error.message });
+  }
+};
+export const deleteDeliveredOrders = async (req, res) => {
+  try {
+    const result = await Order.deleteMany({ status: 'Delivered' });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, message: "No delivered orders found to delete" });
+    }
+
+    res.status(200).json({ success: true, message: `${result.deletedCount} delivered orders deleted successfully` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error deleting delivered orders", error: error.message });
   }
 };

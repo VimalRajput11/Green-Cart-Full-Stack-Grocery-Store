@@ -43,6 +43,23 @@ const DeliveredOrders = () => {
     fetchDeliveredOrders();
   }, []);
 
+  const deleteOrder = async (orderId) => {
+    if (!window.confirm("Are you sure you want to delete this order?")) return;
+
+    try {
+      const { data } = await axios.delete(`/api/agents/order/${orderId}`);
+      if (data.success) {
+        toast.success("Order deleted successfully");
+        // Remove from local state
+        setDeliveredOrders(deliveredOrders.filter(order => order._id !== orderId));
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete order");
+    }
+  };
+
   if (loading) return <div className="p-6">Loading delivered orders...</div>;
 
   if (!agent) return <div className="p-6 text-center text-gray-500">Unauthorized access</div>;
@@ -61,11 +78,17 @@ const DeliveredOrders = () => {
               className="border rounded-xl shadow-sm p-4 flex flex-col md:flex-row justify-between bg-white"
             >
               <div className="flex gap-3 w-full md:w-1/3">
-                <img src={assets.box_icon} alt="box" className="w-10 h-10 mt-1" />
+                <div className="w-16 h-16 bg-gray-50 rounded-lg p-2 border border-gray-200 shrink-0">
+                  <img
+                    src={items[0]?.product?.image?.[0] || assets.box_icon}
+                    alt="product"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
                 <div className="text-sm">
                   {items.map((item, i) => (
-                    <p key={i}>
-                      {item.product.name} x {item.quantity}
+                    <p key={i} className="text-gray-700">
+                      {item.product?.name || 'Product'} x {item.quantity}
                     </p>
                   ))}
                   <p className="mt-1 font-medium">Amount: ₹{amount}</p>
@@ -85,8 +108,17 @@ const DeliveredOrders = () => {
                 <p>{address.phone}</p>
               </div>
 
-              <div className="text-green-700 font-semibold mt-2 md:mt-0 w-full md:w-1/3 text-right">
-                Delivered Successfully
+              <div className="flex items-center justify-between w-full md:w-1/3 mt-2 md:mt-0">
+                <span className="text-green-700 font-semibold">Delivered Successfully</span>
+                <button
+                  onClick={() => deleteOrder(_id)}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
+                  title="Delete Order"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             </div>
           ))}

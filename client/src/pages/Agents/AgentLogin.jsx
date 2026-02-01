@@ -6,13 +6,14 @@ import axios from 'axios';
 const AgentLogin = () => {
   const { isAgent, setIsAgent, navigate } = useAppContext(); // Add these to your context
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
-    if (!phone) return toast.error("Phone number required");
+    if (!phone || !password) return toast.error("Phone and password required");
 
     try {
-      const { data } = await axios.post('/api/agents/login', { phone });
+      const { data } = await axios.post('/api/agents/login', { phone, password });
       if (data.success) {
         setIsAgent(true);
         localStorage.setItem('agentId', data.agent._id); // Store for later use
@@ -46,6 +47,18 @@ const AgentLogin = () => {
             value={phone}
             type='text'
             placeholder='Enter your phone number'
+            className='border border-gray-200 rounded w-full p-2 mt-1 outline-primary'
+            required
+          />
+        </div>
+
+        <div className='w-full'>
+          <p>Password</p>
+          <input
+            onChange={(e) => setPassword(e.target.value)}
+            value={password}
+            type='password'
+            placeholder='Enter your password'
             className='border border-gray-200 rounded w-full p-2 mt-1 outline-primary'
             required
           />

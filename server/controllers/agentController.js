@@ -1,5 +1,6 @@
 import DeliveryAgent from '../models/DeliveryAgent.js';
 import Order from '../models/Order.js';
+import bcrypt from 'bcrypt';
 
 import Razorpay from "razorpay";
 import crypto from "crypto";
@@ -24,10 +25,10 @@ export const getAgents = async (req, res) => {
 // Create a new delivery agent
 export const createAgent = async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, password } = req.body;
 
-    if (!name || !phone) {
-      return res.status(400).json({ success: false, message: 'Name and phone are required' });
+    if (!name || !phone || !password) {
+      return res.status(400).json({ success: false, message: 'Name, phone, and password are required' });
     }
 
     const existing = await DeliveryAgent.findOne({ phone });
@@ -35,7 +36,10 @@ export const createAgent = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Agent with this phone already exists' });
     }
 
-    const agent = new DeliveryAgent({ name, phone });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const agent = new DeliveryAgent({ name, phone, password: hashedPassword });
     await agent.save();
 
     res.status(201).json({ success: true, message: 'Agent created', agent });
@@ -172,15 +176,24 @@ export const acceptOrder = async (req, res) => {
   }
 };
 
-// Agent sees visible orders: unassigned + their own
+// Agent sees visible orders: unassigned orders created after their registration + their own assigned orders
 export const getVisibleOrdersForAgent = async (req, res) => {
   try {
     const agentId = req.userId;
 
+    // Get agent's registration date
+    const agent = await DeliveryAgent.findById(agentId);
+    if (!agent) {
+      return res.status(404).json({ success: false, message: 'Agent not found' });
+    }
+
     const orders = await Order.find({
       $or: [
-        { assignedTo: null },
-        { assignedTo: agentId }
+        {
+          assignedTo: null,
+          createdAt: { $gte: agent.createdAt } // Only show unassigned orders created after agent registration
+        },
+        { assignedTo: agentId } // Show orders assigned to this agent
       ],
     })
       .populate('items.product')
@@ -197,15 +210,20 @@ export const getVisibleOrdersForAgent = async (req, res) => {
 // Agent login (public)
 export const loginAgent = async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, password } = req.body;
 
-    if (!phone) {
-      return res.status(400).json({ success: false, message: 'Phone number is required' });
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, message: 'Phone and password are required' });
     }
 
     const agent = await DeliveryAgent.findOne({ phone });
     if (!agent) {
       return res.status(404).json({ success: false, message: 'Agent not found' });
+    }
+
+    const isMatch = await bcrypt.compare(password, agent.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Invalid credentials' });
     }
 
     // Create JWT token
@@ -373,5 +391,73 @@ export const verifyPayment = async (req, res) => {
   } catch (error) {
     console.error("Payment verification error:", error);
     res.status(500).json({ success: false, message: "Payment verification failed", error: error.message });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    // Assuming auth middleware sets req.agent
+    const agentId = req.agent ? req.agent._id : req.userId; // Fallback if req.userId is used in auth
+
+    if (!agentId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Both old and new passwords are required' });
+    }
+
+    const agent = await DeliveryAgent.findById(agentId);
+    if (!agent) {
+      return res.status(404).json({ success: false, message: 'Agent not found' });
+    }
+
+    // Verify old password
+    const isMatch = await bcrypt.compare(oldPassword, agent.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect old password' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    agent.password = hashedPassword;
+    await agent.save();
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Delete delivered order (agent can only delete their own delivered orders)
+export const deleteDeliveredOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const agentId = req.userId;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if order is assigned to this agent
+    if (order.assignedTo?.toString() !== agentId) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own orders' });
+    }
+
+    // Check if order is delivered
+    if (order.status !== 'Delivered') {
+      return res.status(400).json({ success: false, message: 'Only delivered orders can be deleted' });
+    }
+
+    await Order.findByIdAndDelete(orderId);
+
+    res.json({ success: true, message: 'Order deleted successfully' });
+  } catch (error) {
+    console.error('Delete order error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

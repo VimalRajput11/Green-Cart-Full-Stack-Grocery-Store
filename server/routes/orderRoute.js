@@ -8,6 +8,7 @@ import {
   placeOrderRazorpay,
   verifyRazorpayPayment,
   updateOrderStatus, // ✅ import the new controller
+  deleteDeliveredOrders,
 } from "../controllers/orderController.js";
 
 const orderRouter = express.Router();
@@ -18,5 +19,6 @@ orderRouter.get('/user', authUser, getUserOrders);
 
 orderRouter.get('/seller', authSeller, getAllOrders);
 orderRouter.put('/status/:orderId', authSeller, updateOrderStatus);
+orderRouter.delete('/delete-delivered', authSeller, deleteDeliveredOrders);
 
 export default orderRouter;

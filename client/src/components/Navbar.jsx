@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { assets } from '../assets/assets'
 import { useAppContext } from '../context/AppContext'
 import toast from 'react-hot-toast'
@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const location = useLocation();
   const {
     user,
     setUser,
@@ -19,6 +20,24 @@ const Navbar = () => {
   } = useAppContext();
 
   const profileMenuRef = useRef(null);
+
+  const scrollToContact = () => {
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.getElementById('contact');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      const element = document.getElementById('contact');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    setOpen(false);
+  }
 
   const logout = async () => {
     try {
@@ -65,7 +84,7 @@ const Navbar = () => {
       <div className="hidden sm:flex items-center gap-8">
         <NavLink to='/'>Home</NavLink>
         <NavLink to='/products'>All Products</NavLink>
-        <NavLink to='/'>Contact</NavLink>
+        <button onClick={scrollToContact} className='text-gray-700 hover:text-black'>Contact</button>
 
         <div className="hidden lg:flex items-center text-sm gap-2 border border-gray-300 px-3 rounded-full">
           <input
@@ -121,7 +140,7 @@ const Navbar = () => {
           <NavLink to='/' onClick={() => setOpen(false)}>Home</NavLink>
           <NavLink to='/products' onClick={() => setOpen(false)}>All Products</NavLink>
           {user && <NavLink to='/my-orders' onClick={() => setOpen(false)}>My Orders</NavLink>}
-          <NavLink to='/' onClick={() => setOpen(false)}>Contact</NavLink>
+          <button onClick={scrollToContact} className='text-left'>Contact</button>
 
           {!user ? (
             <button

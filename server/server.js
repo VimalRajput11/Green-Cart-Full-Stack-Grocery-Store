@@ -1,5 +1,5 @@
 import cookieParser from 'cookie-parser';
-import express from 'express';
+import express from 'express'; // Server entry point
 import cors from 'cors';
 import connectDB from './configs/db.js';
 import 'dotenv/config';
@@ -11,6 +11,7 @@ import cartRouter from './routes/cartRoute.js';
 import addressRouter from './routes/addressRoute.js';
 import orderRouter from './routes/orderRoute.js';
 import agentRouter from './routes/agentRoutes.js';
+import categoryRouter from './routes/categoryRoute.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -38,6 +39,7 @@ app.use('/api/cart', cartRouter);
 app.use('/api/address', addressRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/agents', agentRouter);
+app.use('/api/category', categoryRouter);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

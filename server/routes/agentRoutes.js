@@ -14,7 +14,9 @@ import {
   markOrderPaid,
   updateOrderStatus,
   createRazorpayOrder,
-  verifyPayment
+  verifyPayment,
+  changePassword,
+  deleteDeliveredOrder
 } from '../controllers/agentController.js';
 import { authAgent } from '../middlewares/authAgent.js';
 import authSeller from '../middlewares/authSeller.js';
@@ -24,6 +26,7 @@ const router = express.Router();
 router.post('/login', loginAgent);
 router.get('/is-auth', authAgent, isAgentAuth);
 router.get('/logout', authAgent, agentLogout);
+router.post('/change-password', authAgent, changePassword);
 
 // Seller/Admin routes
 router.get('/', authSeller, getAgents);
@@ -40,5 +43,6 @@ router.put('/mark-paid/:orderId', authAgent, markOrderPaid);
 router.put('/status/:id', authAgent, updateOrderStatus);
 router.post('/order/razorpay', authAgent, createRazorpayOrder);
 router.post('/order/verify', authAgent, verifyPayment);
+router.delete('/order/:orderId', authAgent, deleteDeliveredOrder);
 
 export default router;

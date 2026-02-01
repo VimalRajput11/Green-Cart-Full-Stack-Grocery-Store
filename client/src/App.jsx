@@ -13,13 +13,19 @@ import ProductDetails from './pages/ProductDetails.jsx'
 import Cart from './pages/Cart.jsx'
 import AddAddress from './pages/AddAddress.jsx'
 import MyOrders from './pages/MyOrders.jsx'
+import RecipeChatbot from './components/RecipeChatbot.jsx'
+import RecipeAI from './pages/RecipeAI.jsx'
+import NotFound from './pages/NotFound.jsx'
 
 import SellerLogin from './components/Seller/SellerLogin.jsx'
 import SellerLayout from './pages/seller/SellerLayout.jsx'
 import AddProduct from './pages/seller/AddProduct.jsx'
+import AddCategory from './pages/seller/AddCategory.jsx'
 import ProductList from './pages/seller/ProductList.jsx'
 import Orders from './pages/seller/Orders.jsx'
 import SellerAgents from './pages/seller/SellerAgents.jsx'
+
+import SellerDashboard from './pages/seller/SellerDashboard.jsx'
 
 import AgentLogin from './pages/Agents/AgentLogin.jsx'
 import AgentLayout from './pages/Agents/AgentLayout.jsx'
@@ -48,10 +54,14 @@ const App = () => {
           <Route path="/cart" element={<Cart />} />
           <Route path="/add-address" element={<AddAddress />} />
           <Route path="/my-orders" element={<MyOrders />} />
+          <Route path="/recipe-ai" element={<RecipeAI />} />
+          <Route path="*" element={<NotFound />} />
 
           {/* Seller Auth and Layout Routes */}
           <Route path="/seller" element={isSeller ? <SellerLayout /> : <SellerLogin />}>
-            <Route index element={isSeller ? <AddProduct /> : null} />
+            <Route index element={isSeller ? <SellerDashboard /> : null} />
+            <Route path="add-product" element={<AddProduct />} />
+            <Route path="add-category" element={<AddCategory />} />
             <Route path="product-list" element={<ProductList />} />
             <Route path="orders" element={<Orders />} />
             <Route path="agents" element={<SellerAgents />} />
@@ -62,11 +72,12 @@ const App = () => {
             <Route index element={isAgent ? <DeliveryAgentPage /> : null} />
             <Route path="delivered" element={<DeliveredOrders />} />
           </Route>
-          
+
         </Routes>
       </div>
 
       {!isSellerPath && !isAgentPath && <Footer />}
+      {!isSellerPath && !isAgentPath && <RecipeChatbot />}
     </div>
   );
 };

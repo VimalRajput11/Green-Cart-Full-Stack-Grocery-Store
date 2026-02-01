@@ -20,7 +20,8 @@ export const AppContextProvider = ({ children }) => {
     const [showUserLogin, setShowUserLogin] = useState(false);
     const [products, setProducts] = useState([]);
     const [cartItems, setCartItems] = useState({});
-    const [searchQuery, setSearchQuery] = useState({});
+    const [searchQuery, setSearchQuery] = useState("");
+    const [categories, setCategories] = useState([]);
 
     //Fetch Seller Status
     const fetchSeller = async () => {
@@ -49,6 +50,20 @@ export const AppContextProvider = ({ children }) => {
     }
 
 
+
+    //Fetch All Categories
+    const fetchCategories = async () => {
+        try {
+            const { data } = await axios.get('/api/category/list');
+            if (data.success) {
+                setCategories(data.categories);
+            } else {
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    }
 
     //Fetch User Auth Status, User Data and Cart Items
     const fetchUser = async () => {
@@ -97,6 +112,26 @@ export const AppContextProvider = ({ children }) => {
         toast.success("Added to Cart");
     }
 
+    const batchAddToCart = (itemIds) => {
+        if (!user) {
+            setShowUserLogin(true);
+            return;
+        };
+
+        setCartItems((prev) => {
+            let cartData = structuredClone(prev);
+            itemIds.forEach((id) => {
+                if (cartData[id]) {
+                    cartData[id] += 1;
+                } else {
+                    cartData[id] = 1;
+                }
+            });
+            return cartData;
+        });
+        toast.success(itemIds.length + " Items Added to Cart");
+    }
+
     //Update Cart Item Quantity
     const updateCartItem = (itemId, quantity) => {
         let cartData = structuredClone(cartItems);
@@ -142,7 +177,8 @@ export const AppContextProvider = ({ children }) => {
     useEffect(() => {
         fetchSeller(),
             fetchProducts(),
-            fetchAgent()
+            fetchAgent(),
+            fetchCategories()
         fetchUser()
     }, []);
 
@@ -169,8 +205,8 @@ export const AppContextProvider = ({ children }) => {
 
     const value = {
         navigate, user, setUser, isSeller, setIsSeller, showUserLogin, setShowUserLogin, products,
-        currency, addToCart, updateCartItem, removeFromCart, cartItems, searchQuery, setSearchQuery, getCartAmount,
-        getCartCount, axios, fetchProducts, setCartItems, isAgent, setIsAgent
+        currency, addToCart, batchAddToCart, updateCartItem, removeFromCart, cartItems, searchQuery, setSearchQuery, getCartAmount,
+        getCartCount, axios, fetchProducts, setCartItems, isAgent, setIsAgent, categories, getCategories: fetchCategories
     }
     return <AppContext.Provider value={value}>
         {children}
