@@ -40,42 +40,42 @@ export const sendRegisterOtp = async (req, res) => {
         const info = await transporter.sendMail({
             from: `"Green Cart" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: 'Verify Your Account - Green Cart',
-            text: `Welcome to Green Cart! Your verification code is: ${otp}. This code expires in 5 minutes.`,
+            subject: 'Verify your account',
+            text: `Your verification code is: ${otp}. This code expires in 5 minutes.`,
             html: `
-                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #fca5a5; margin: 0; padding: 0;">
-                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0fdf4; padding: 40px 20px;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
                         <!-- Header -->
-                        <div style="background-color: #ef4444; padding: 30px 20px; text-align: center;">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Green Cart</h1>
-                            <p style="color: #fee2e2; margin: 5px 0 0 0; font-size: 16px;">Welcome to the family!</p>
+                        <div style="background-color: #4fbf86; padding: 30px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">Green Cart</h1>
                         </div>
                         
                         <!-- Content -->
-                        <div style="padding: 40px 30px; text-align: center;">
-                            <h2 style="color: #333333; font-size: 24px; margin-bottom: 20px;">Verify Your Email Address</h2>
-                            <p style="color: #666666; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-                                Thank you for signing up with Green Cart. To complete your registration, please use the verification code below.
+                        <div style="padding: 40px; color: #1f2937; text-align: center;">
+                            <h2 style="font-size: 20px; color: #333333; margin-bottom: 16px;">Verify your identity</h2>
+                            <p style="font-size: 16px; line-height: 24px; color: #4b5563; margin-bottom: 32px;">
+                                To complete your registration for <strong>Green Cart</strong>, please use the verification code below:
                             </p>
                             
-                            <div style="background-color: #fff1f2; border: 2px dashed #ef4444; border-radius: 8px; padding: 15px; display: inline-block; margin-bottom: 30px;">
-                                <h1 style="color: #ef4444; font-size: 36px; letter-spacing: 8px; margin: 0; font-weight: bold;">${otp}</h1>
+                            <div style="margin: 32px 0;">
+                                <span style="font-size: 36px; font-weight: 800; letter-spacing: 6px; color: #4fbf86; background: #f0fdf4; padding: 12px 24px; border-radius: 8px; border: 1px solid #bdf2d5;">
+                                    ${otp}
+                                </span>
                             </div>
                             
-                            <p style="color: #999999; font-size: 14px; margin-bottom: 0;">
-                                This code is valid for <strong>5 minutes</strong>. <br>If you didn't request this, please ignore this email.
+                            <p style="font-size: 14px; color: #9ca3af; margin-top: 32px;">
+                                This code is valid for <strong>5 minutes</strong>. <br>If you did not request this code, please ignore this email.
                             </p>
                         </div>
                         
                         <!-- Footer -->
-                        <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+                        <div style="padding: 20px; background-color: #f9fafb; text-align: center; border-top: 1px solid #f3f4f6;">
                             <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                                &copy; ${new Date().getFullYear()} Green Cart. All rights reserved.<br>
-                                123 Green Street, Tech City
+                                © ${new Date().getFullYear()} Green Cart Store. Quality Freshness Delivered.<br>
+                                Tech City, Grocers Hub
                             </p>
                         </div>
                     </div>
-                    <div style="height: 40px;"></div>
                 </div>
             `
         });

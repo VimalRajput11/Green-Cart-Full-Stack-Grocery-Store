@@ -52,6 +52,14 @@ const orderSchema = new mongoose.Schema({
     ref: 'DeliveryAgent',
     default: null,
   },
+  deletedByUser: {
+    type: Boolean,
+    default: false,
+  },
+  deletedByAgent: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 const Order = mongoose.models.order || mongoose.model('Order', orderSchema);

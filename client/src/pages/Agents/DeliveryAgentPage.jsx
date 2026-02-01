@@ -395,8 +395,8 @@ const DeliveryAgentPage = () => {
                             </button>
                           )}
 
-                          {/* Payment Collection Logic */}
-                          {!order.isPaid && order.paymentType === "COD" && order.status !== 'Delivered' && (
+                          {/* Payment Collection Logic - Only visible when reached location */}
+                          {!order.isPaid && order.paymentType === "COD" && order.status === 'Reached Location' && (
                             <div className="relative mt-2">
                               <button
                                 onClick={() => toggleDropdown(order._id)}

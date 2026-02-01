@@ -132,7 +132,10 @@ export const assignOrderToAgent = async (req, res) => {
 // Agent fetches only their assigned orders
 export const getAgentOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ assignedTo: req.params.id })
+    const orders = await Order.find({
+      assignedTo: req.params.id,
+      deletedByAgent: { $ne: true }
+    })
       .populate('items.product')
       .populate('address');
 
@@ -199,14 +202,18 @@ export const getVisibleOrdersForAgent = async (req, res) => {
             { paymentType: 'Online', isPaid: true } // Only show paid online orders
           ]
         },
-        // Show unassigned orders created after agent registration OR orders assigned to this agent
+        // Show unassigned orders (that are not too old or explicitly for this agent)
         {
           $or: [
             {
               assignedTo: null,
-              createdAt: { $gte: agentRegistrationDate }
+              status: 'Order Placed',
+              deletedByAgent: { $ne: true }
             },
-            { assignedTo: agentId }
+            {
+              assignedTo: agentId,
+              deletedByAgent: { $ne: true }
+            }
           ]
         }
       ]
@@ -353,9 +360,10 @@ export const markOrderPaid = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Update order payment status or delivery status as needed
-    order.isPaid = true;          // or order.status = 'Delivered';
+    // Update order payment status and delivery status
+    order.isPaid = true;
     order.paidAt = new Date();
+    order.status = 'Delivered';
 
     await order.save();
 
@@ -375,6 +383,10 @@ export const updateOrderStatus = async (req, res) => {
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
+    if (status === 'Delivered' && order.paymentType === 'COD') {
+      order.isPaid = true;
+      order.paidAt = new Date();
+    }
     order.status = status;
     await order.save();
 
@@ -511,7 +523,8 @@ export const deleteDeliveredOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Only delivered orders can be deleted' });
     }
 
-    await Order.findByIdAndDelete(orderId);
+    order.deletedByAgent = true;
+    await order.save();
 
     res.json({ success: true, message: 'Order deleted successfully' });
   } catch (error) {

@@ -136,6 +136,7 @@ export const getUserOrders = async (req, res) => {
 
     const orders = await Order.find({
       userId,
+      deletedByUser: { $ne: true },
       $or: [
         { paymentType: "COD" },
         { paymentType: "Online", isPaid: true },
@@ -199,13 +200,16 @@ export const updateOrderStatus = async (req, res) => {
 };
 export const deleteDeliveredOrders = async (req, res) => {
   try {
-    const result = await Order.deleteMany({ status: 'Delivered' });
+    const result = await Order.updateMany(
+      { status: 'Delivered', deletedByUser: false },
+      { $set: { deletedByUser: true } }
+    );
 
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ success: false, message: "No delivered orders found to delete" });
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "No delivered orders found to clear" });
     }
 
-    res.status(200).json({ success: true, message: `${result.deletedCount} delivered orders deleted successfully` });
+    res.status(200).json({ success: true, message: `${result.modifiedCount} delivered orders cleared from history` });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error deleting delivered orders", error: error.message });
   }
@@ -228,7 +232,8 @@ export const deleteOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Active orders cannot be deleted from history" });
     }
 
-    await Order.findByIdAndDelete(orderId);
+    order.deletedByUser = true;
+    await order.save();
 
     res.status(200).json({ success: true, message: "Order deleted from history" });
   } catch (error) {

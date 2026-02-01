@@ -140,14 +140,22 @@ const AgentLayout = () => {
                 end={item.path === '/agents'}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
-                    ? "bg-primary text-white shadow-md shadow-primary/30"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-primary"
+                  `flex items-center gap-4 px-5 py-3.5 rounded-xl text-sm font-semibold transition-all duration-300 group ${isActive
+                    ? "bg-primary text-white shadow-lg shadow-primary/30 scale-[1.02]"
+                    : "text-gray-500 hover:bg-primary/5 hover:text-primary"
                   }`
                 }
               >
-                <img src={item.icon} alt={item.name} className={`w-5 h-5 ${location.pathname === item.path ? 'brightness-0 invert' : ''}`} />
-                <span>{item.name}</span>
+                {({ isActive }) => (
+                  <>
+                    <img
+                      src={item.icon}
+                      alt={item.name}
+                      className={`w-6 h-6 transition-all duration-300 ${isActive ? 'brightness-200 invert' : 'opacity-70 group-hover:opacity-100'}`}
+                    />
+                    <span className="tracking-wide">{item.name}</span>
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
