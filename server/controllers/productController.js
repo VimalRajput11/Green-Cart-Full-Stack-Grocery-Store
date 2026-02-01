@@ -1,6 +1,19 @@
 import { v2 as cloudinary } from 'cloudinary';
 import Product from "../models/Product.js";
-import axios from 'axios';
+
+// Helper to upload Buffer to Cloudinary
+const uploadToCloudinary = (buffer) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { resource_type: 'image', folder: 'green-cart' },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+            }
+        );
+        stream.end(buffer);
+    });
+};
 
 
 // Add Product : /api/product/add
@@ -10,7 +23,12 @@ export const addProduct = async (req, res) => {
 
         const images = req.files;
 
-        let imagesUrl = images.map((item) => item.path);
+        let imagesUrl = await Promise.all(
+            images.map(async (item) => {
+                return await uploadToCloudinary(item.buffer);
+            })
+        );
+
         await Product.create({ ...productData, image: imagesUrl })
 
         res.json({ success: true, message: 'Product Added' })
@@ -104,9 +122,8 @@ export const scanProductList = async (req, res) => {
         const allProducts = await Product.find({}, 'name _id category offerPrice image');
         const productListString = allProducts.map(p => `- ${p.name} (ID: ${p._id})`).join('\n');
 
-        // 2. Prepare image for Gemini (fetch from Cloudinary URL)
-        const response = await axios.get(req.file.path, { responseType: 'arraybuffer' });
-        const imageBase64 = Buffer.from(response.data, 'binary').toString('base64');
+        // 2. Prepare image for Gemini (directly from memory buffer)
+        const imageBase64 = req.file.buffer.toString('base64');
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
