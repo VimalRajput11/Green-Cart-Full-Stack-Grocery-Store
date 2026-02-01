@@ -1,3 +1,6 @@
 client/node_modules
 server/node_modules
 .env
+*.txt
+server/models.txt
+server/models_utf8.txt

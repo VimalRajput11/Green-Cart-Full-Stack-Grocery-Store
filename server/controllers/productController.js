@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
 import Product from "../models/Product.js";
+import axios from 'axios';
 
 
 // Add Product : /api/product/add
@@ -9,13 +10,7 @@ export const addProduct = async (req, res) => {
 
         const images = req.files;
 
-        let imagesUrl = await Promise.all(
-            images.map(async (item) => {
-                let result = await cloudinary.uploader.upload(item.path,
-                    { resource_type: 'image' });
-                return result.secure_url
-            })
-        )
+        let imagesUrl = images.map((item) => item.path);
         await Product.create({ ...productData, image: imagesUrl })
 
         res.json({ success: true, message: 'Product Added' })
@@ -79,9 +74,11 @@ export const deleteProduct = async (req, res) => {
 // Smart Scan Logic
 // ---------------------------
 
-import { createWorker } from 'tesseract.js';
-import stringSimilarity from 'string-similarity';
-import fs from 'fs';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+// import fs from 'fs'; // No longer needed
+
+// Initialize Gemini
+// genAI will be initialized inside handler
 
 // Helper to find best match
 const matchProductByName = (scannedName, allProducts) => {
@@ -100,55 +97,73 @@ const matchProductByName = (scannedName, allProducts) => {
 export const scanProductList = async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ success: false, message: 'No image uploaded' });
+            return res.json({ success: false, message: 'No image uploaded' });
         }
 
-        // 1. Perform OCR
-        const worker = await createWorker('eng');
-        const ret = await worker.recognize(req.file.path);
-        const text = ret.data.text;
-        await worker.terminate();
-
-        // Clean up uploaded file if needed (depends on multer config, usually good to keep for debug or delete)
-        // fs.unlinkSync(req.file.path); 
-
-        // 2. Process Text (Split by lines)
-        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-
-        // 3. Fetch all products for matching
+        // 1. Fetch all products to give to Gemini for matching
         const allProducts = await Product.find({}, 'name _id category offerPrice image');
+        const productListString = allProducts.map(p => `- ${p.name} (ID: ${p._id})`).join('\n');
 
-        const foundProducts = [];
-        const notFoundItems = [];
+        // 2. Prepare image for Gemini (fetch from Cloudinary URL)
+        const response = await axios.get(req.file.path, { responseType: 'arraybuffer' });
+        const imageBase64 = Buffer.from(response.data, 'binary').toString('base64');
 
-        // 4. Match lines to products
-        lines.forEach(line => {
-            // Basic cleaning: remove numbers, bullets, checkboxes
-            const cleanLine = line.replace(/[^a-zA-Z\s]/g, '').trim();
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-            if (cleanLine.length > 2) {
-                const match = matchProductByName(cleanLine, allProducts);
-                if (match) {
-                    // Avoid duplicates
-                    if (!foundProducts.some(p => p._id.toString() === match._id.toString())) {
-                        foundProducts.push(match);
-                    }
-                } else {
-                    notFoundItems.push(cleanLine);
+        const prompt = `
+            You are a grocery store assistant. I will provide an image of a handwritten shopping list or a bill.
+            Your task is to identify which items from the list below are mentioned in the image.
+            
+            Available Products:
+            ${productListString}
+
+            Analyze the image carefully. Match items by name, even if they are written in Hindi, Hinglish, or slightly differently (e.g., "Aloo" matches "Potato").
+            Return ONLY a JSON object with the following structure:
+            {
+                "matches": ["PRODUCT_ID_1", "PRODUCT_ID_2"],
+                "notFound": ["Items written in the list but not found in available products"],
+                "summary": "A friendly summary of what you found"
+            }
+            Do not include any markdown formatting like \`\`\`json. Just the raw JSON.
+        `;
+
+        const result = await model.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    data: imageBase64,
+                    mimeType: req.file.mimetype
                 }
             }
-        });
+        ]);
+
+        const responseText = result.response.text();
+
+        // Use regex to extract JSON if Gemini includes any extra text or backticks
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("Could not parse AI response");
+        }
+
+        const aiData = JSON.parse(jsonMatch[0]);
+
+        // Map IDs back to full product objects
+        const foundProducts = allProducts.filter(p => aiData.matches.includes(p._id.toString()));
+        const notFoundItems = aiData.notFound || [];
 
         res.json({
             success: true,
-            message: `Found ${foundProducts.length} items from your list!`,
+            message: aiData.summary || `Found ${foundProducts.length} items from your list!`,
             products: foundProducts,
             notFound: notFoundItems,
-            rawText: text
+            rawText: "" // No longer needed
         });
+
+        // No local cleanup needed for Cloudinary storage
 
     } catch (error) {
         console.error("Scan Error:", error);
-        res.status(500).json({ success: false, message: "Failed to scan image. Try a clearer photo." });
+        res.status(500).json({ success: false, message: "Failed to scan image. Gemini AI error." });
     }
 };

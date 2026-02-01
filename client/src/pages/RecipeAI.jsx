@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { assets, dummyProducts } from '../assets/assets';
 import toast from 'react-hot-toast';
+import { useAppContext } from '../context/AppContext';
 
 const RecipeAI = () => {
     const [input, setInput] = useState('');
@@ -12,7 +13,19 @@ const RecipeAI = () => {
     ]);
     const [loading, setLoading] = useState(false);
 
-    const handleSend = () => {
+    const formatMessage = (text) => {
+        if (!text) return "";
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+        return parts.map((part, index) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+            }
+            return part;
+        });
+    };
+    const { axios, batchAddToCart } = useAppContext();
+
+    const handleSend = async () => {
         if (!input.trim()) return;
 
         const userMessage = input;
@@ -20,100 +33,37 @@ const RecipeAI = () => {
         setInput('');
         setLoading(true);
 
-        // Simulate AI delay
-        setTimeout(() => {
-            const response = generateRecipeResponse(userMessage);
-            setChatHistory((prev) => [...prev, { role: 'ai', message: response.text, recipe: response.recipe }]);
-            setLoading(false);
-        }, 1500);
-    };
+        try {
+            const { data } = await axios.post('/api/ai/chat', {
+                message: userMessage,
+                history: chatHistory.filter(c => c.role !== 'loading')
+            });
 
-    const generateRecipeResponse = (query) => {
-        query = query.toLowerCase();
-
-        // Simple keyword matching logic
-        if (query.includes('breakfast')) {
-            return {
-                text: "How about a healthy and energetic start? I recommend a **Power Packed Oats Bowl**.",
-                recipe: {
-                    name: "Power Packed Oats Bowl",
-                    ingredients: ["Oats", "Milk", "Banana", "Apple", "Honey"],
-                    instructions: [
-                        "Boil milk and add oats.",
-                        "Cook for 5 minutes until soft.",
-                        "Chop banana and apple.",
-                        "Top the oats with fruits and a drizzle of honey.",
-                    ],
-                    products: dummyProducts.filter(p => p.category === 'Dairy' || p.category === 'Fruits' || p.name.includes('Oats'))
+            if (data.success) {
+                // Check if AI detected "Add to Cart" intent
+                if (data.addToCartIntent) {
+                    // Try to find the most recent recipe in history to add its products
+                    const lastRecipeChat = [...chatHistory].reverse().find(c => c.recipe && c.recipe.products);
+                    if (lastRecipeChat) {
+                        const productIds = lastRecipeChat.recipe.products.map(p => p._id);
+                        batchAddToCart(productIds);
+                    }
                 }
-            };
-        }
 
-        if (query.includes('dinner') || query.includes('lunch') || query.includes('curry') || query.includes('paneer')) {
-            return {
-                text: "A warm, home-cooked meal sounds perfect. Let's make **Shahi Matar Paneer**!",
-                recipe: {
-                    name: "Shahi Matar Paneer",
-                    ingredients: ["Paneer", "Peas (Matar)", "Tomato", "Onion", "Spices", "Cream"],
-                    instructions: [
-                        "Fry paneer cubes until golden.",
-                        "Sauté onions and tomato puree.",
-                        "Add spices and peas, cook for 10 mins.",
-                        "Add paneer and simmer. Garnish with cream.",
-                    ],
-                    products: dummyProducts.filter(p => p.category === 'Dairy' || p.category === 'Vegetables').slice(0, 4)
-                }
-            };
-        }
-
-        if (query.includes('snack') || query.includes('quick')) {
-            return {
-                text: "Need something quick? Try **Spicy Masala Maggi** with a twist of fresh veggies.",
-                recipe: {
-                    name: "Spicy Vegetable Maggi",
-                    ingredients: ["Maggi", "Carrot", "Peas", "Onion", "Green Chili"],
-                    instructions: [
-                        "Sauté chopped veggies in a pan.",
-                        "Add water and bring to boil.",
-                        "Add Maggi noodles and tastemaker.",
-                        "Cook for 2 mins and serve hot!",
-                    ],
-                    products: dummyProducts.filter(p => p.category === 'Instant' || p.category === 'Vegetables').slice(0, 4)
-                }
-            };
-        }
-
-        if (query.includes('fruit') || query.includes('sweet') || query.includes('dessert')) {
-            return {
-                text: "Satisfy your sweet tooth naturally! How about a **Fresh Fruit Salad**?",
-                recipe: {
-                    name: "Fresh Fruit Salad",
-                    ingredients: ["Apple", "Banana", "Grapes", "Orange", "Honey"],
-                    instructions: [
-                        "Wash and chop all fruits into bite-sized pieces.",
-                        "Mix them in a large bowl.",
-                        "Drizzle with honey and toss gently.",
-                        "Chill for 30 mins before serving.",
-                    ],
-                    products: dummyProducts.filter(p => p.category === 'Fruits').slice(0, 5)
-                }
-            };
-        }
-
-        return {
-            text: "That sounds interesting! I can suggest a versatile **Mixed Vegetable Stir Fry**.",
-            recipe: {
-                name: "Mixed Vegetable Stir Fry",
-                ingredients: ["Carrot", "Potato", "Onion", "Tomato", "Spinach"],
-                instructions: [
-                    "Chop all vegetables finely.",
-                    "Heat oil in a pan and add cumin seeds.",
-                    "Stir fry vegetables for 10-15 mins.",
-                    "Add salt and pepper to taste.",
-                ],
-                products: dummyProducts.filter(p => p.category === 'Vegetables').slice(0, 5)
+                setChatHistory((prev) => [...prev, {
+                    role: 'ai',
+                    message: data.text,
+                    recipe: data.recipe
+                }]);
+            } else {
+                setChatHistory((prev) => [...prev, { role: 'ai', message: data.message || "Chef is busy, try again later!" }]);
             }
-        };
+        } catch (error) {
+            console.error(error);
+            setChatHistory((prev) => [...prev, { role: 'ai', message: "Oops! I lost connection to the kitchen." }]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -135,12 +85,22 @@ const RecipeAI = () => {
                             ? 'bg-primary text-white rounded-tr-none'
                             : 'bg-white border border-gray-100 rounded-tl-none'
                             }`}>
-                            <p className="whitespace-pre-wrap">{chat.message}</p>
+                            <p className="whitespace-pre-wrap">{formatMessage(chat.message)}</p>
 
                             {/* Recipe Card */}
                             {chat.recipe && (
                                 <div className="mt-4 bg-green-50 p-4 rounded-xl border border-green-100">
-                                    <h3 className="font-bold text-gray-800 text-lg mb-2">{chat.recipe.name}</h3>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="font-bold text-gray-800 text-lg">{chat.recipe.name}</h3>
+                                        {chat.recipe.products && chat.recipe.products.length > 0 && (
+                                            <button
+                                                onClick={() => batchAddToCart(chat.recipe.products.map(p => p._id))}
+                                                className="bg-primary text-white text-[10px] px-3 py-1.5 rounded-full hover:bg-primary-dull transition shadow-sm font-semibold"
+                                            >
+                                                Shop All
+                                            </button>
+                                        )}
+                                    </div>
 
                                     <div className="mb-3">
                                         <h4 className="font-semibold text-gray-700 text-sm">Ingredients needed:</h4>
