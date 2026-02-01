@@ -162,7 +162,7 @@ export const acceptOrder = async (req, res) => {
     }
 
     if (order.assignedTo) {
-      if (order.assignedTo.toString() !== agentId) {
+      if (order.assignedTo.toString() !== agentId.toString()) {
         return res.status(400).json({ success: false, message: 'Already picked by another agent' });
       }
       return res.json({ success: true, message: 'Already accepted', order });
@@ -468,7 +468,7 @@ export const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
     // Assuming auth middleware sets req.agent
-    const agentId = req.agent ? req.agent._id : req.userId; // Fallback if req.userId is used in auth
+    const agentId = req.agent ? req.agent._id.toString() : req.userId; // Fallback if req.userId is used in auth
 
     if (!agentId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
@@ -514,7 +514,7 @@ export const deleteDeliveredOrder = async (req, res) => {
     }
 
     // Check if order is assigned to this agent
-    if (order.assignedTo?.toString() !== agentId) {
+    if (order.assignedTo?.toString() !== agentId.toString()) {
       return res.status(403).json({ success: false, message: 'You can only delete your own orders' });
     }
 

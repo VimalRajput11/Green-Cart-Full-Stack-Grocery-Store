@@ -35,7 +35,7 @@ export const authAgent = async (req, res, next) => {
     }
 
     // Set to request for further use
-    req.userId = agent._id;
+    req.userId = agent._id.toString();
     req.agent = agent;
 
     next(); // Go to next middleware or controller
