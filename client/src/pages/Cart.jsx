@@ -206,7 +206,7 @@ const Cart = () => {
                                                     value={cartItems[product._id] || product.quantity}
                                                     className="bg-transparent text-sm font-bold outline-none cursor-pointer"
                                                 >
-                                                    {Array(Math.max((cartItems[product._id] || product.quantity || 0) + 5, 10)).fill('').map((_, i) => (
+                                                    {Array(product.stock || 0).fill('').map((_, i) => (
                                                         <option key={i} value={i + 1}>{i + 1}</option>
                                                     ))}
                                                 </select>

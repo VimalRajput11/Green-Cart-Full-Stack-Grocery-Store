@@ -92,187 +92,207 @@ const SellerAgents = () => {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Delivery Fleet</h1>
-          <p className="text-gray-500 text-sm">Manage your delivery agents and track their status.</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => fetchAgents(true)}
-            disabled={refreshing}
-            className="bg-white text-gray-700 px-4 py-2.5 rounded-full font-medium shadow-md hover:bg-gray-50 transition flex items-center gap-2 border border-gray-200 disabled:opacity-50"
-          >
-            <img
-              src={assets.refresh_icon}
-              className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`}
-              alt=""
-            />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-primary text-white px-6 py-2.5 rounded-full font-medium shadow-md hover:bg-primary-dull transition flex items-center gap-2"
-          >
-            <img src={assets.add_icon} className="w-5 h-5 brightness-0 invert" alt="" />
-            {showAddForm ? 'Cancel' : 'Add New Agent'}
-          </button>
-        </div>
-      </div>
-
-      {/* Stats & Search Row */}
-      <div className="flex flex-col md:flex-row gap-6 mb-8">
-        {/* Stats */}
-        <div className="flex gap-4 overflow-x-auto pb-2 md:pb-0">
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm min-w-[140px]">
-            <p className="text-xs text-gray-500 uppercase font-semibold">Total Agents</p>
-            <p className="text-2xl font-bold text-gray-800 mt-1">{agents.length}</p>
+    <div className="p-8 bg-[#fcfcfc] min-h-screen no-scrollbar overflow-y-auto">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight tracking-[-0.04em]">Fleet Logistics</h1>
+            <p className="text-gray-400 font-semibold mt-1 text-sm">Monitor and manage your active delivery network.</p>
           </div>
-        </div>
-
-        {/* Search */}
-        <div className="flex-1">
-          <div className="relative">
-            <img src={assets.search_icon} className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" alt="" />
-            <input
-              type="text"
-              placeholder="Search agents by name or phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Add Agent Form */}
-      {showAddForm && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Register New Agent</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                type="text"
-                placeholder="e.g. John Doe"
-                value={newAgent.name}
-                onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-              <input
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                type="text"
-                placeholder="e.g. 9876543210"
-                value={newAgent.phone}
-                onChange={(e) => setNewAgent({ ...newAgent, phone: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                type="password"
-                placeholder="Enter password"
-                value={newAgent.password}
-                onChange={(e) => setNewAgent({ ...newAgent, password: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end">
+          <div className="flex gap-4">
             <button
-              className="bg-primary text-white px-8 py-2.5 rounded-lg font-medium shadow-sm hover:bg-primary-dull transition"
-              onClick={addAgent}
+              onClick={() => fetchAgents(true)}
+              disabled={refreshing}
+              className="bg-white text-gray-700 px-6 py-3.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-sm hover:shadow-md transition-all flex items-center gap-2 border border-gray-100 disabled:opacity-50 active:scale-95"
             >
-              Create Account
+              <img
+                src={assets.refresh_icon}
+                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                alt=""
+              />
+              {refreshing ? 'Syncing...' : 'Sync Fleet'}
+            </button>
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className={`${showAddForm ? 'bg-gray-900' : 'bg-green-600'} text-white px-8 py-3.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg ${showAddForm ? 'shadow-gray-900/10' : 'shadow-green-500/20'} transition-all flex items-center gap-3 active:scale-95`}
+            >
+              {showAddForm ? (
+                <>
+                  <span className="text-lg">✕</span>
+                  Abort Registration
+                </>
+              ) : (
+                <>
+                  <img src={assets.add_icon} className="w-4 h-4 brightness-0 invert" alt="" />
+                  Deploy New Agent
+                </>
+              )}
             </button>
           </div>
         </div>
-      )}
 
-      {/* Agent Grid */}
-      {filteredAgents.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <img src={assets.agent_icon} className="w-8 h-8 opacity-40 grayscale" alt="" />
+        {/* Info & Control Hub */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+          <div className="bg-white p-6 rounded-3xl border border-gray-100/60 shadow-sm flex items-center justify-between group hover:border-green-100 transition-colors">
+            <div>
+              <p className="text-[10px] text-gray-300 uppercase font-bold tracking-widest mb-1">Total Strength</p>
+              <p className="text-3xl font-bold text-gray-900 tracking-tight">{agents.length}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 group-hover:bg-green-600 group-hover:text-white transition-all">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
           </div>
-          <h3 className="text-lg font-bold text-gray-700">No agents found</h3>
-          <p className="text-gray-500">Try adjusting your search or add a new agent.</p>
+
+          <div className="lg:col-span-3">
+            <div className="relative group">
+              <img src={assets.search_icon} className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 opacity-20 group-focus-within:opacity-50 transition-opacity" alt="" />
+              <input
+                type="text"
+                placeholder="Find agents by name, ID or mobile terminal..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-16 pr-8 py-6 rounded-[1.5rem] border border-gray-100/60 bg-white focus:outline-none focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 transition-all font-semibold text-gray-900 placeholder:text-gray-300 text-sm shadow-sm"
+              />
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAgents.map((agent) => (
-            <div key={agent._id} className="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition duration-300 overflow-hidden relative">
-              {/* Top Gradient */}
-              <div className="h-16 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-100"></div>
 
-              <div className="px-6 pb-6 relative flex flex-col items-center text-center">
-                {/* Avatar - Centered and Overlapping */}
-                <div className="absolute -top-8 w-16 h-16 bg-white rounded-2xl p-1 shadow-md border border-gray-100">
-                  <div className="w-full h-full bg-primary text-white rounded-xl flex items-center justify-center text-xl font-bold uppercase shadow-inner">
-                    {agent.name.slice(0, 2)}
-                  </div>
-                </div>
+        {/* Add Agent Form */}
+        {showAddForm && (
+          <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-xl mb-12 animate-in fade-in slide-in-from-top-6 duration-500">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 uppercase tracking-tight">Agent Registration</h2>
+                <p className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest mt-0.5">Initialize new delivery credential</p>
+              </div>
+            </div>
 
-                {/* Menu / Action */}
-                <button
-                  onClick={() => setConfirmModal({
-                    isOpen: true,
-                    agentId: agent._id,
-                    agentName: agent.name
-                  })}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition p-2 bg-white rounded-full shadow-sm border border-gray-100 opacity-0 group-hover:opacity-100 z-10"
-                  title="Remove Agent"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                </button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pl-1">Full Designation</label>
+                <input
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-6 py-5 focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 outline-none font-semibold text-gray-900 transition-all placeholder:text-gray-300"
+                  type="text"
+                  placeholder="e.g. Marcus Aurelius"
+                  value={newAgent.name}
+                  onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pl-1">Mobile Terminal</label>
+                <input
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-6 py-5 focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 outline-none font-semibold text-gray-900 transition-all placeholder:text-gray-300"
+                  type="text"
+                  placeholder="+91 00000 00000"
+                  value={newAgent.phone}
+                  onChange={(e) => setNewAgent({ ...newAgent, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pl-1">Access Cipher</label>
+                <input
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-6 py-5 focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 outline-none font-semibold text-gray-900 transition-all placeholder:text-gray-300"
+                  type="password"
+                  placeholder="Create secure key"
+                  value={newAgent.password}
+                  onChange={(e) => setNewAgent({ ...newAgent, password: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="mt-10 flex justify-end">
+              <button
+                className="bg-green-600 text-white px-12 py-5 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-green-500/20 hover:shadow-2xl hover:bg-green-700 transition-all active:scale-95"
+                onClick={addAgent}
+              >
+                Launch Protocol
+              </button>
+            </div>
+          </div>
+        )}
 
-                <div className="mt-10 w-full">
-                  <h3 className="text-lg font-bold text-gray-800 truncate px-2">{agent.name}</h3>
-                  <p className="text-gray-500 text-sm mb-4">{agent.phone}</p>
+        {/* Agent Grid */}
+        {filteredAgents.length === 0 ? (
+          <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-gray-100 mt-4">
+            <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6 text-gray-200">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-400 uppercase tracking-widest">No Active Personnel</h3>
+            <p className="text-gray-300 font-semibold mt-2">Adjust search parameters or initialize new agent deployment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {filteredAgents.map((agent) => (
+              <div key={agent._id} className="group bg-white rounded-[2.5rem] border border-gray-100/60 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden relative flex flex-col pt-0">
+                {/* Header Decoration */}
+                <div className={`h-24 transition-all duration-500 ${agent.status === 'Available' ? 'bg-gradient-to-br from-green-50/50 to-emerald-50/50' : 'bg-gray-50/50'}`}></div>
 
-                  <div className="flex justify-center mb-4">
-                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${agent.status === 'Available'
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-gray-50 border-gray-200'
-                      }`}>
-                      <div className={`w-2 h-2 rounded-full ${agent.status === 'Available' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                      <p className={`text-xs font-semibold uppercase tracking-wide ${agent.status === 'Available' ? 'text-green-700' : 'text-gray-500'
-                        }`}>
-                        {agent.status === 'Available' ? 'Online' : 'Offline'}
-                      </p>
+                <div className="px-8 pb-8 relative flex flex-col items-center text-center -mt-12">
+                  {/* Avatar Container */}
+                  <div className="relative mb-6">
+                    <div className="w-24 h-24 bg-white rounded-[2rem] p-1.5 shadow-xl border border-gray-100 group-hover:scale-110 transition-transform duration-500">
+                      <div className={`w-full h-full rounded-[1.5rem] flex items-center justify-center text-2xl font-bold uppercase text-white shadow-inner ${agent.status === 'Available' ? 'bg-green-600' : 'bg-gray-400'}`}>
+                        {agent.name.slice(0, 2)}
+                      </div>
                     </div>
+                    {/* Pulsing Status Dot */}
+                    <div className={`absolute -right-1 -bottom-1 w-6 h-6 rounded-full border-4 border-white shadow-md ${agent.status === 'Available' ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <a
-                      href={`tel:${agent.phone}`}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm"
-                    >
-                      <span>Call Agent</span>
-                    </a>
+                  <button
+                    onClick={() => setConfirmModal({
+                      isOpen: true,
+                      agentId: agent._id,
+                      agentName: agent.name
+                    })}
+                    className="absolute top-4 right-0 text-gray-300 hover:text-red-600 transition-all p-3 hover:bg-red-50 rounded-2xl opacity-0 group-hover:opacity-100 z-10"
+                    title="Terminate Access"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+
+                  <div className="w-full">
+                    <h3 className="text-xl font-bold text-gray-900 truncate tracking-tight">{agent.name}</h3>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em] mt-1 group-hover:text-green-600 transition-colors">{agent.phone}</p>
+
+                    <div className="mt-6 flex justify-center">
+                      <span className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${agent.status === 'Available'
+                        ? 'bg-green-50 border-green-100 text-green-700'
+                        : 'bg-gray-50 border-gray-100 text-gray-500'
+                        }`}>
+                        {agent.status === 'Available' ? 'Operational' : 'Off-Duty'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 mt-8">
+                      <a
+                        href={`tel:${agent.phone}`}
+                        className="flex items-center justify-center gap-3 py-4 bg-[#fcfcfc] border border-gray-100 rounded-2xl text-[10px] font-semibold text-gray-900 uppercase tracking-widest hover:bg-white hover:border-green-200 hover:shadow-lg hover:shadow-green-500/5 transition-all active:scale-95 group/call"
+                      >
+                        <svg className="w-4 h-4 text-gray-300 group-hover/call:text-green-600 transition-colors" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                        Initiate Voice Call
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Confirm Delete Modal */}
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, agentId: null, agentName: '' })}
-        onConfirm={() => removeAgent(confirmModal.agentId)}
-        title="Remove Agent"
-        message={`Are you sure you want to remove ${confirmModal.agentName}? This action cannot be undone.`}
-        confirmText="Remove"
-        cancelText="Cancel"
-        type="danger"
-      />
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ isOpen: false, agentId: null, agentName: '' })}
+          onConfirm={() => removeAgent(confirmModal.agentId)}
+          title="Revoke Permission"
+          message={`Confirm termination of logistics credentials for ${confirmModal.agentName}?`}
+          confirmText="Terminate Access"
+          cancelText="Retain Access"
+          type="danger"
+        />
+      </div>
     </div>
   );
 };

@@ -114,7 +114,14 @@ export const AppContextProvider = ({ children }) => {
             return;
         }
 
+        const productInfo = products.find(p => p._id === itemId);
         let cartData = structuredClone(cartItems);
+        const currentQty = cartData[itemId] || 0;
+
+        if (productInfo && (currentQty + 1) > productInfo.stock) {
+            toast.error(`Only ${productInfo.stock} items left in stock`);
+            return;
+        }
 
         if (cartData[itemId]) {
             cartData[itemId] += 1;
@@ -132,24 +139,48 @@ export const AppContextProvider = ({ children }) => {
             return;
         };
 
+        let limitedCount = 0;
+        let addedCount = 0;
+
         setCartItems((prev) => {
             let cartData = structuredClone(prev);
             itemIds.forEach((id) => {
-                if (cartData[id]) {
-                    cartData[id] += 1;
+                const productInfo = products.find(p => p._id === id);
+                const currentQty = cartData[id] || 0;
+
+                if (productInfo && (currentQty + 1) > productInfo.stock) {
+                    limitedCount++;
                 } else {
-                    cartData[id] = 1;
+                    if (cartData[id]) {
+                        cartData[id] += 1;
+                    } else {
+                        cartData[id] = 1;
+                    }
+                    addedCount++;
                 }
             });
             return cartData;
         });
-        toast.success(itemIds.length + " Items Added to Cart");
+
+        if (limitedCount > 0) {
+            toast.success(`Added ${addedCount} items. ${limitedCount} items were limited by stock.`);
+        } else {
+            toast.success(`${addedCount} Items Added to Cart`);
+        }
     }
 
     //Update Cart Item Quantity
     const updateCartItem = (itemId, quantity) => {
+        const productInfo = products.find(p => p._id === itemId);
         let cartData = structuredClone(cartItems);
-        cartData[itemId] = quantity;
+
+        if (productInfo && quantity > productInfo.stock) {
+            toast.error(`Only ${productInfo.stock} items left in stock`);
+            cartData[itemId] = productInfo.stock;
+        } else {
+            cartData[itemId] = quantity;
+        }
+
         setCartItems(cartData)
         toast.success('Cart Updated')
     }

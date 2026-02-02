@@ -64,4 +64,16 @@ const listCategories = async (req, res) => {
     }
 }
 
-export { addCategory, listCategories };
+// Delete category
+const deleteCategory = async (req, res) => {
+    try {
+        const { id } = req.body;
+        await Category.findByIdAndDelete(id);
+        res.json({ success: true, message: "Category deleted successfully" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export { addCategory, listCategories, deleteCategory };

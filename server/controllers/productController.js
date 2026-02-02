@@ -64,12 +64,39 @@ export const productById = async (req, res) => {
     }
 }
 
+// Update Product : /api/product/update
+export const updateProduct = async (req, res) => {
+    try {
+        const { id, ...updateData } = req.body;
+
+        if (typeof updateData.stock !== 'undefined') {
+            updateData.stock = Number(updateData.stock);
+            updateData.inStock = updateData.stock > 0;
+        }
+
+        await Product.findByIdAndUpdate(id, updateData);
+        res.json({ success: true, message: 'Product Updated Successfully' })
+    } catch (error) {
+        console.log(error.message);
+        res.json({ success: false, message: error.message });
+    }
+}
+
 // Change Product in Stock : /api/product/stock
 export const changeStock = async (req, res) => {
     try {
-        const { id, inStock } = req.body;
-        await Product.findByIdAndUpdate(id, { inStock });
-        res.json({ success: true, message: 'Stock Updated' })
+        const { id, inStock, stock } = req.body;
+
+        const updateData = {};
+        if (typeof inStock !== 'undefined') updateData.inStock = inStock;
+        if (typeof stock !== 'undefined') {
+            updateData.stock = Number(stock);
+            // Auto update inStock boolean based on quantity
+            updateData.inStock = Number(stock) > 0;
+        }
+
+        await Product.findByIdAndUpdate(id, updateData);
+        res.json({ success: true, message: 'Stock Status Updated' })
     } catch (error) {
         console.log(error.message);
         res.json({ success: false, message: error.message });

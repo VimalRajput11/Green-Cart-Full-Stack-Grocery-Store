@@ -3,7 +3,11 @@ import { assets } from '../assets/assets';
 import { useAppContext } from '../context/AppContext';
 
 const ProductCard = ({ product }) => {
-    const { currency, addToCart, removeFromCart, cartItems, navigate } = useAppContext();
+    const { addToCart, removeFromCart, cartItems, navigate } = useAppContext();
+
+    const discount = product.price > product.offerPrice
+        ? Math.round(((product.price - product.offerPrice) / product.price) * 100)
+        : 0;
 
     return product && (
         <div
@@ -11,69 +15,87 @@ const ProductCard = ({ product }) => {
                 navigate(`/products/${product.category.toLowerCase()}/${product._id}`);
                 scrollTo(0, 0);
             }}
-            className="border border-gray-300 rounded-md p-4 bg-white w-full max-w-[200px] shadow-sm flex flex-col justify-between h-[300px]">
-            <div className="group cursor-pointer flex items-center justify-center px-2 h-[130px]">
+            className="border border-gray-100 rounded-2xl p-3 bg-white w-full max-w-[220px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[275px] relative">
+
+            {/* Discount Badge over Image */}
+            {discount > 0 && (
+                <div className="absolute top-2 left-2 bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded z-10 shadow-sm">
+                    {discount}% OFF
+                </div>
+            )}
+
+            <div className="group cursor-pointer flex items-center justify-center h-[145px] mb-1">
                 <img
                     className="group-hover:scale-105 transition max-h-full max-w-full object-contain"
                     src={product.image[0]}
                     alt={product.name}
                 />
             </div>
-            <div className="flex flex-col justify-between flex-1 mt-2 text-sm text-gray-500/70">
-                <div>
-                    <p>{product.category} {product.weight && `• ${product.weight}`}</p>
-                    <p className="text-gray-700 font-medium text-base truncate w-full">{product.name}</p>
-                    <div className="flex items-center gap-0.5 mt-1">
-                        {Array(5).fill('').map((_, i) => (
-                            <img
-                                key={i}
-                                className="md:w-3.5 w-3"
-                                src={i < 4 ? assets.star_icon : assets.star_dull_icon}
-                                alt=""
-                            />
-                        ))}
-                        <p>(4)</p>
-                    </div>
+
+            <div className="flex flex-col flex-1">
+                <p className="text-gray-900 font-bold text-[16px] line-clamp-2 leading-tight mb-0 h-9">{product.name}</p>
+                <div className="flex items-center justify-between mt-1">
+                    <p className="text-gray-400 text-[13px] mb-0 font-medium">{product.weight || '1 unit'}</p>
+                    {product.stock <= 0 ? (
+                        <span className="text-red-500 text-[10px] font-bold uppercase tracking-tighter bg-red-50 px-1.5 py-0.5 rounded">Out of Stock</span>
+                    ) : product.stock < 5 ? (
+                        <span className="text-orange-500 text-[10px] font-bold tracking-tighter">Only {product.stock} left</span>
+                    ) : null}
                 </div>
 
-                <div className="flex items-end justify-between mt-3">
-                    <p className="md:text-lg text-sm font-medium text-primary">
-                        {currency}{product.offerPrice}{' '}
-                        <span className="text-gray-500/60 md:text-sm text-xs line-through">
-                            {currency}{product.price}
-                        </span>
-                    </p>
-                    <div onClick={(e) => { e.stopPropagation(); }} className="text-primary">
-                        {!cartItems[product._id] ? (
-                            <button
-                                className="flex items-center justify-center gap-1 border border-primary/40 bg-primary/10 md:w-[80px] w-[64px] h-[32px] rounded cursor-pointer"
-                                onClick={() => addToCart(product._id)}
-                            >
-                                <img src={assets.cart_icon} alt="cart_icon" />
-                                Add
-                            </button>
-                        ) : (
-                            <div className="flex items-center justify-center gap-2 md:w-20 w-16 h-[32px] bg-primary/25 rounded select-none">
+                <div className="mt-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-gray-900 font-bold text-[16px]">₹{product.offerPrice}</span>
+                            {product.price > product.offerPrice && (
+                                <span className="text-gray-400 text-[10px] line-through leading-none">₹{product.price}</span>
+                            )}
+                        </div>
+
+                        <div onClick={(e) => { e.stopPropagation(); }} className="text-green-700">
+                            {product.stock <= 0 ? (
                                 <button
-                                    onClick={() => removeFromCart(product._id)}
-                                    className="cursor-pointer text-md px-2 h-full"
+                                    disabled
+                                    className="border border-gray-200 text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider cursor-not-allowed"
                                 >
-                                    -
+                                    Stock Out
                                 </button>
-                                <span className="w-5 text-center">{cartItems[product._id]}</span>
+                            ) : !cartItems[product._id] ? (
                                 <button
+                                    className="border border-green-600/30 text-green-700 hover:bg-green-50 transition px-5 py-1.5 rounded-lg font-bold text-xs cursor-pointer uppercase tracking-wider"
                                     onClick={() => addToCart(product._id)}
-                                    className="cursor-pointer text-md px-2 h-full"
                                 >
-                                    +
+                                    Add
                                 </button>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center justify-center bg-green-600 text-white rounded-lg select-none min-w-[75px]">
+                                    <button
+                                        onClick={() => removeFromCart(product._id)}
+                                        className="cursor-pointer text-lg px-2 py-1"
+                                    >
+                                        -
+                                    </button>
+                                    <span className="w-4 text-center text-xs font-bold">{cartItems[product._id]}</span>
+                                    <button
+                                        onClick={() => addToCart(product._id)}
+                                        className="cursor-pointer text-lg px-2 py-1"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+
+
+
+
+
+
 
 export default ProductCard;

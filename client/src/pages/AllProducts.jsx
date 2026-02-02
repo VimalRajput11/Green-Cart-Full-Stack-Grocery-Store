@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ProductCard from '../components/ProductCard';
+import ProductSlider from '../components/ProductSlider';
 import { assets } from '../assets/assets';
 
 const AllProducts = () => {
@@ -10,10 +11,10 @@ const AllProducts = () => {
   const [category, setCategory] = useState([]);
   const [sortType, setSortType] = useState('relevant');
 
-  // Use dynamic categories if available, otherwise fallback to a default list
+  // Sync with dynamic categories from database
   const categoriesList = categories && categories.length > 0
     ? categories.map(cat => cat.name)
-    : ['Fruits', 'Vegetables', 'Dairy', 'Instant', 'Essentials', 'Bread'];
+    : [];
 
   const toggleCategory = (e) => {
     if (category.includes(e.target.value)) {
@@ -64,13 +65,24 @@ const AllProducts = () => {
     sortProduct();
   }, [sortType])
 
+  // Group products by category for the slider view
+  const groupedProducts = categoriesList.reduce((acc, catName) => {
+    const productsInCat = products.filter(p => p.category === catName);
+    if (productsInCat.length > 0) {
+      acc[catName] = productsInCat;
+    }
+    return acc;
+  }, {});
+
+  const isFiltering = (searchQuery && searchQuery.trim() !== '') || category.length > 0;
+
   return (
-    <div className='flex flex-col gap-1 pt-10 border-t border-gray-100'>
+    <div className='flex flex-col gap-1 pt-4 border-t border-gray-100 mb-20'>
 
       {/* Page Header */}
-      <div className='mb-8 text-center md:text-left'>
-        <h1 className='text-3xl font-bold text-gray-800 tracking-wide font-serif'>Our Collection</h1>
-        <p className='text-gray-500 mt-2 font-light'>Discover freshness in every aisle</p>
+      <div className='mb-4 text-center md:text-left'>
+        <h1 className='text-3xl font-bold text-gray-800 tracking-wide font-serif'>All Products</h1>
+        <p className='text-gray-500 mt-2 font-light'>Browse products by category</p>
       </div>
 
       <div className='flex flex-col sm:flex-row gap-8 sm:gap-10 pt-2'>
@@ -97,30 +109,49 @@ const AllProducts = () => {
         </div>
 
         {/* Right Side */}
-        <div className='flex-1'>
+        <div className='flex-1 min-w-0'>
 
           {/* Sort & Title */}
           <div className='flex justify-between items-center text-base sm:text-lg mb-6'>
             <p className='text-gray-600 font-light'>
-              Showing <span className='font-semibold text-gray-900'>{filterProducts.length}</span> products
+              {isFiltering ? (
+                <>Showing <span className='font-semibold text-gray-900'>{filterProducts.length}</span> products</>
+              ) : (
+                <>All categories</>
+              )}
             </p>
-            <select onChange={(e) => setSortType(e.target.value)} className='border border-gray-300 text-sm px-4 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 bg-white text-gray-700 cursor-pointer'>
-              <option value="relevant">Sort by: Relevant</option>
-              <option value="low-high">Sort by: Low to High</option>
-              <option value="high-low">Sort by: High to Low</option>
-            </select>
+            {isFiltering && (
+              <select onChange={(e) => setSortType(e.target.value)} className='border border-gray-300 text-sm px-4 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 bg-white text-gray-700 cursor-pointer'>
+                <option value="relevant">Sort by: Relevant</option>
+                <option value="low-high">Sort by: Low to High</option>
+                <option value="high-low">Sort by: High to Low</option>
+              </select>
+            )}
           </div>
 
-          {/* Map Products */}
-          <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-8 gap-x-6'>
-            {filterProducts.map((product, index) => (
-              <div key={index} className="transform transition duration-500 hover:scale-[1.02]">
-                <ProductCard product={product} />
-              </div>
-            ))}
-          </div>
+          {/* Conditional Rendering: Sliders or Grid */}
+          {isFiltering ? (
+            <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-8 gap-x-6'>
+              {filterProducts.map((product, index) => (
+                <div key={index} className="transform transition duration-500 hover:scale-[1.02]">
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {Object.keys(groupedProducts).map((catName) => (
+                <ProductSlider
+                  key={catName}
+                  title={catName}
+                  categoryName={catName}
+                  products={groupedProducts[catName]}
+                />
+              ))}
+            </div>
+          )}
 
-          {filterProducts.length === 0 && (
+          {filterProducts.length === 0 && isFiltering && (
             <div className='flex flex-col items-center justify-center py-20 text-gray-500'>
               <p className='text-lg'>No products found matching your filters.</p>
             </div>
@@ -133,3 +164,4 @@ const AllProducts = () => {
 }
 
 export default AllProducts
+

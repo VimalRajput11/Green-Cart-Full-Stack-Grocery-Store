@@ -23,7 +23,21 @@ export const addOrder = async (req, res) => {
     let amount = 0;
     for (const item of items) {
       const product = await Product.findById(item.product);
+      if (!product) continue;
+
       amount += product.offerPrice * item.quantity;
+
+      // Check for sufficient stock before proceeding
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for ${product.name}. Available: ${product.stock}` });
+      }
+
+      // Decrement stock
+      const newStock = Math.max(0, (product.stock || 0) - item.quantity);
+      await Product.findByIdAndUpdate(item.product, {
+        stock: newStock,
+        inStock: newStock > 0
+      });
     }
     amount += Math.floor(amount * 0.02); // Add tax or service fee
 
@@ -58,6 +72,12 @@ export const placeOrderRazorpay = async (req, res) => {
       if (!product) {
         return res.status(400).json({ success: false, message: `Product not found: ${item.product}` });
       }
+
+      // Check for sufficient stock before proceeding
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for ${product.name}. Available: ${product.stock}` });
+      }
+
       amount += product.offerPrice * item.quantity;
     }
 
@@ -111,6 +131,23 @@ export const verifyRazorpayPayment = async (req, res) => {
 
     if (expectedSignature !== razorpay_signature) {
       return res.status(400).json({ success: false, message: "Invalid payment signature" });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // Decrement stock for each item in the order
+    for (const item of order.items) {
+      const product = await Product.findById(item.product);
+      if (product) {
+        const newStock = Math.max(0, (product.stock || 0) - item.quantity);
+        await Product.findByIdAndUpdate(item.product, {
+          stock: newStock,
+          inStock: newStock > 0
+        });
+      }
     }
 
     await Order.findByIdAndUpdate(orderId, {

@@ -94,6 +94,7 @@ export const assets = {
   trust_icon,
   black_arrow_icon,
   white_arrow_icon,
+  dropdown_icon: black_arrow_icon,
   main_banner_bg,
   main_banner_bg_sm,
   bottom_banner_image,

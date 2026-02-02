@@ -15,7 +15,7 @@ const BestSeller = () => {
       </div>
 
       <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-y-8 gap-x-6'>
-        {products.filter((product) => product.inStock).slice(0, 5).map((product, index) => (
+        {products.filter((product) => product.stock > 0 || (product.stock === undefined && product.inStock)).slice(0, 5).map((product, index) => (
           <div key={index} className="transform transition duration-500 hover:scale-[1.02]">
             <ProductCard product={product} />
           </div>

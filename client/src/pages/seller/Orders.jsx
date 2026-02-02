@@ -11,6 +11,7 @@ const Orders = () => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch order data
   const fetchOrders = async (isManualRefresh = false) => {
@@ -91,9 +92,11 @@ const Orders = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredOrders = filterStatus === 'All'
-    ? orders
-    : orders.filter(order => order.status === filterStatus);
+  const filteredOrders = orders.filter(order => {
+    const matchesStatus = filterStatus === 'All' || order.status === filterStatus;
+    const matchesSearch = order._id.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   if (loading) return (
     <div className="flex justify-center items-center h-[80vh]">
@@ -102,205 +105,214 @@ const Orders = () => {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-8 bg-[#fcfcfc] min-h-screen">
+      <div className="flex flex-col gap-8 mb-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
-            <p className="text-gray-500 text-sm">Track and manage customer orders efficiently.</p>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight tracking-[-0.04em]">Order Management</h1>
+            <p className="text-gray-400 font-semibold mt-1 text-sm">Track and manage customer orders efficiently.</p>
           </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchOrders(true)}
+              disabled={refreshing}
+              className="flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-900 rounded-2xl border border-gray-100 font-bold transition-all text-xs uppercase tracking-widest shadow-sm hover:shadow-md disabled:opacity-50"
+            >
+              <img
+                src={assets.refresh_icon}
+                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                alt=""
+              />
+              {refreshing ? 'Syncing...' : 'Sync Orders'}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto">
+            {/* Filter Tabs */}
+            <div className="w-full lg:w-auto overflow-x-auto no-scrollbar">
+              <div className="flex bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm gap-1.5 min-w-max">
+                {['All', 'Order Placed', 'Picked', 'Delivered', 'Cancelled'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setFilterStatus(status)}
+                    className={`px-5 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${filterStatus === status
+                      ? 'bg-green-600 text-white shadow-lg shadow-green-500/20'
+                      : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative group w-full md:w-80">
+              <img src={assets.search_icon} className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-20 group-focus-within:opacity-50 transition-opacity" alt="" />
+              <input
+                type="text"
+                placeholder="Search by Order ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-6 py-3.5 rounded-2xl border border-gray-100 bg-white focus:outline-none focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 transition-all font-semibold text-gray-900 placeholder:text-gray-300 text-xs shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* Clear Delivered Button */}
           <button
-            onClick={() => fetchOrders(true)}
-            disabled={refreshing}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-full border border-gray-200 hover:bg-gray-50 transition text-sm font-medium shadow-sm disabled:opacity-50"
+            onClick={deleteAllDelivered}
+            className="flex items-center justify-center gap-2 px-6 py-3.5 bg-red-50 text-red-600 rounded-[1.25rem] border border-red-100 hover:bg-red-500 hover:text-white transition-all text-[11px] font-bold uppercase tracking-widest w-full lg:w-auto shadow-sm"
+            title="Delete all delivered orders"
           >
-            <img
-              src={assets.refresh_icon}
-              className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
-              alt=""
-            />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" /></svg>
+            Purge History
           </button>
         </div>
-
-        {/* Filter Tabs */}
-        <div className="overflow-x-auto pb-2 -mx-2 px-2">
-          <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm gap-1 min-w-max">
-            {['All', 'Order Placed', 'Picked', 'Delivered', 'Cancelled'].map(status => (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={`px-3 py-2 text-xs sm:text-sm font-medium rounded-md transition whitespace-nowrap ${filterStatus === status
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Clear Delivered Button */}
-        <button
-          onClick={deleteAllDelivered}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-lg border border-red-200 hover:bg-red-100 transition text-sm font-medium w-full sm:w-auto"
-          title="Delete all delivered orders"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          Clear Delivered
-        </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-8">
         {filteredOrders.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-            <img src={assets.order_icon} className="w-16 h-16 mx-auto opacity-20 filter grayscale" alt="" />
-            <p className="mt-4 text-gray-500 font-medium">No orders found in this category.</p>
+          <div className="text-center py-32 bg-white rounded-[2.5rem] border-2 border-dashed border-gray-100">
+            <img src={assets.order_icon} className="w-20 h-20 mx-auto opacity-10 grayscale mb-6" alt="" />
+            <h4 className="text-gray-900 font-bold text-xl uppercase tracking-[0.1em]">No Logs Found</h4>
+            <p className="mt-2 text-gray-400 font-semibold text-sm">There are no orders in this category yet.</p>
           </div>
         ) : (
           filteredOrders.map((order) => (
-            <div key={order._id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition duration-200 overflow-hidden">
+            <div key={order._id} className="bg-white rounded-[2rem] border border-gray-100/60 shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden">
               {/* Order Header */}
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white p-2 rounded-full border border-gray-200 shadow-sm">
-                    <img src={assets.box_icon} className="w-6 h-6" alt="" />
+              <div className="bg-gray-50/40 px-8 py-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="bg-white w-12 h-12 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-all duration-300">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8V21H3V8M1 3H23V8H1V3ZM10 12H14" /></svg>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-gray-800">Order #{order._id.slice(-6).toUpperCase()}</p>
-                    <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleString()}</p>
+                    <div className="flex items-center gap-3 mb-1">
+                      <p className="text-lg font-bold text-gray-900 tracking-tight">Order #{order._id.slice(-6).toUpperCase()}</p>
+                      <span className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest 
+                        ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                          order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-orange-700'}`}>
+                        {order.status}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest leading-none">{new Date(order.createdAt).toLocaleString()}</p>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${order.status === 'Delivered' ? 'bg-green-50 text-green-700 border-green-200' :
-                    order.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                      'bg-yellow-50 text-yellow-700 border-yellow-200'
-                    }`}>
-                    {order.status}
-                  </span>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-8">
                   <div className="text-right">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Total Amount</p>
-                    <p className="font-bold text-lg text-gray-800">{currency}{order.amount}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Payload</p>
+                    <p className="font-bold text-3xl text-gray-900 leading-none">{currency}{order.amount}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-10">
                 {/* Products */}
-                <div className="lg:col-span-2 space-y-4">
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Items Ordered</h3>
-                  {order.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-4 p-3 rounded-lg border border-gray-100 bg-gray-50/50">
-                      <div className="w-14 h-14 bg-white rounded-lg border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden p-1">
-                        {(() => {
-                          // Default placeholder image if product image is missing
-                          const placeholderImage = 'https://via.placeholder.com/150/4CAF50/FFFFFF?text=Product';
-                          const imageUrl = item.product?.image?.[0] || placeholderImage;
-
-                          return (
-                            <img
-                              src={imageUrl}
-                              className="w-full h-full object-contain"
-                              alt={item.product?.name || 'Product'}
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = placeholderImage;
-                              }}
-                            />
-                          );
-                        })()}
+                <div className="lg:col-span-2">
+                  <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">Manifest Items</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-5 p-4 rounded-2xl border border-gray-50 bg-gray-50/20 group/item hover:bg-white hover:shadow-md hover:border-gray-100 transition-all">
+                        <div className="w-16 h-16 bg-white rounded-xl border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden p-2 shadow-sm">
+                          <img
+                            src={item.product?.image?.[0] || 'https://via.placeholder.com/150/4CAF50/FFFFFF?text=Product'}
+                            className="w-full h-full object-contain"
+                            alt={item.product?.name}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 text-base leading-tight truncate">{item.product?.name || "Product Unavailable"}</p>
+                          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mt-1">Quantity: {item.quantity} {item.product?.weight && `• ${item.product.weight}`}</p>
+                        </div>
+                        <p className="font-bold text-gray-800 text-lg">
+                          {currency}{item.product?.offerPrice ? (item.product.offerPrice * item.quantity).toLocaleString() : '??'}
+                        </p>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800 text-sm line-clamp-1">{item.product?.name || "Product Unavailable"}</p>
-                        <p className="text-xs text-gray-500">Qty: {item.quantity} {item.product?.weight && `• ${item.product.weight}`}</p>
-                      </div>
-                      <p className="font-medium text-gray-600 text-sm">
-                        {currency}{item.product?.offerPrice ? (item.product.offerPrice * item.quantity) : 'N/A'}
-                      </p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
-                {/* Customer & Delivery Info */}
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Customer Details</h3>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p className="font-medium text-gray-800">{order.address?.firstName} {order.address?.lastName}</p>
-                      <p>{order.address?.street}</p>
-                      <p>{order.address?.city}, {order.address?.state} {order.address?.zipcode}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs border border-blue-100">{order.address?.phone}</span>
+                {/* Info Stack */}
+                <div className="flex flex-col gap-10">
+                  {/* Delivery Info */}
+                  <div className="bg-gray-50/50 p-6 rounded-[1.5rem] border border-gray-50">
+                    <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Recipient Identity</h3>
+                    <div className="space-y-2">
+                      <p className="text-base font-bold text-gray-900">{order.address?.firstName} {order.address?.lastName}</p>
+                      <p className="text-sm font-semibold text-gray-500 leading-relaxed">{order.address?.street}, {order.address?.city}, {order.address?.state}</p>
+                      <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase border border-blue-100 shadow-sm mt-3">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                        {order.address?.phone}
                       </div>
                     </div>
                   </div>
 
+                  {/* Agent Info */}
                   <div>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Delivery Partner</h3>
+                    <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Assigned Partner</h3>
                     {order.assignedTo ? (() => {
                       const agentId = typeof order.assignedTo === 'string' ? order.assignedTo : order.assignedTo._id;
                       const agent = agents.find(a => a._id === agentId);
                       return (
-                        <div className="flex items-center gap-3 bg-green-50 p-3 rounded-lg border border-green-100">
-                          <div className="w-8 h-8 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-bold text-xs">
+                        <div className="flex items-center gap-5 bg-green-50/50 p-5 rounded-2xl border border-green-100/50">
+                          <div className="w-12 h-12 rounded-2xl bg-green-200 flex items-center justify-center text-green-700 font-bold text-sm shadow-sm">
                             {agent?.name?.[0] || 'A'}
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-gray-800">{agent?.name || 'Assigned Agent'}</p>
-                            <p className="text-xs text-green-600">{agent?.phone || 'Contact Info'}</p>
+                            <p className="text-sm font-bold text-gray-900 uppercase tracking-wider">{agent?.name || 'Assigned Agent'}</p>
+                            <p className="text-[11px] font-semibold text-green-700 uppercase tracking-widest">{agent?.phone || 'Contact Info'}</p>
                           </div>
                         </div>
                       )
                     })() : (
-                      <div className="p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-yellow-700 text-sm flex items-center gap-2">
-                        <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
-                        Waiting for agent assignment...
+                      <div className="p-5 bg-[#fff8e1] border border-[#ffecb3] rounded-2xl text-[#827717] text-xs font-black uppercase tracking-widest flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse shadow-sm"></span>
+                        Awaiting Assignment
                       </div>
                     )}
                   </div>
 
-                  {/* Payment Status */}
-                  <div>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Payment Info</h3>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Method:</span>
-                      <span className="font-medium">{order.paymentType}</span>
+                  {/* Payment Info */}
+                  <div className="flex items-end justify-between border-t border-gray-100 pt-8 mt-auto">
+                    <div>
+                      <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Protocol</h3>
+                      <div className="flex items-center gap-3">
+                        <span className="text-gray-900 font-bold text-sm uppercase">{order.paymentType}</span>
+                        <span className={`px-3 py-1 rounded-md text-[9px] font-bold tracking-widest uppercase shadow-sm ${order.isPaid ? 'bg-green-600 text-white' : 'bg-[#ff9800] text-white'}`}>
+                          {order.isPaid ? 'Cleared' : 'Due'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm mt-1">
-                      <span className="text-gray-600">Status:</span>
-                      <span className={`font-bold ${order.isPaid ? 'text-green-600' : 'text-orange-500'}`}>
-                        {order.isPaid ? 'PAID' : 'PENDING'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-gray-100 flex gap-2 justify-end">
-                    {order.status !== 'Cancelled' && order.status !== 'Delivered' && (
+                    <div className="flex gap-3">
+                      {order.status !== 'Cancelled' && order.status !== 'Delivered' && (
+                        <button
+                          onClick={() => {
+                            confirmAction(
+                              "Cancel Order",
+                              "Are you sure you want to cancel this order? This action cannot be undone.",
+                              () => updateStatus(order._id, 'Cancelled'),
+                              'danger'
+                            );
+                          }}
+                          className="w-12 h-12 flex items-center justify-center bg-red-50 text-red-500 rounded-2xl border border-red-100 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                          title="Abort Order"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                        </button>
+                      )}
                       <button
-                        onClick={() => {
-                          confirmAction(
-                            "Cancel Order",
-                            "Are you sure you want to cancel this order? This action cannot be undone.",
-                            () => updateStatus(order._id, 'Cancelled'),
-                            'danger'
-                          );
-                        }}
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 border border-red-200 transition"
+                        onClick={() => setSelectedOrder(order)}
+                        className="w-12 h-12 flex items-center justify-center bg-white text-gray-900 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all shadow-sm group-hover:border-green-300"
+                        title="View Protocol"
                       >
-                        Cancel Order
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
                       </button>
-                    )}
-                    <button
-                      onClick={() => setSelectedOrder(order)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 bg-white shadow-sm"
-                      title="View Invoice"
-                    >
-                      <img src={assets.order_icon} className="w-5 h-5 opacity-60" alt="" />
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -311,95 +323,105 @@ const Orders = () => {
 
       {/* Invoice Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="fixed inset-0 bg-gray-900/80 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-300 border border-white/20">
+            <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
               <div>
-                <h2 className="text-xl font-bold text-gray-800">Invoice</h2>
-                <p className="text-sm text-gray-500">Order #{selectedOrder._id.slice(-6).toUpperCase()}</p>
+                <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-tight">Order Protocol</h2>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Transaction Log #{selectedOrder._id.slice(-6).toUpperCase()}</p>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-600 p-2">✕</button>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors"
+              >✕</button>
             </div>
 
-            <div className="p-8">
-              <div className="flex justify-between mb-8">
-                <div>
-                  <img src={assets.logo} className="w-24 mb-2" alt="logo" />
-                  <p className="text-sm text-gray-500">123 Green Street, Tech City</p>
-                  <p className="text-sm text-gray-500">support@greencart.com</p>
+            <div className="p-10 overflow-y-auto no-scrollbar">
+              <div className="flex justify-between mb-12">
+                <div className="flex flex-col gap-2">
+                  <img className="h-10 w-fit" src={assets.logo} alt="logo" />
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-2 leading-relaxed">Central Distribution Hub<br />Sector 12, Logistics Park<br />support@greencart.it</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Date: {new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
-                  <p className="text-sm text-gray-500">Status: {selectedOrder.status}</p>
+                <div className="text-right flex flex-col items-end">
+                  <div className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest mb-4 ${selectedOrder.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-orange-700'}`}>
+                    {selectedOrder.status}
+                  </div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.15em]">Date Of Entry</p>
+                  <p className="text-sm font-bold text-gray-900 mt-1">{new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-8 mb-8">
-                <div>
-                  <h3 className="font-bold text-gray-700 text-sm uppercase mb-2">Bill To:</h3>
-                  <p className="font-medium">{selectedOrder.address?.firstName} {selectedOrder.address?.lastName}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.address?.street}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.address?.city}, {selectedOrder.address?.state}</p>
-                  <p className="text-sm text-gray-600">{selectedOrder.address?.phone}</p>
+              <div className="grid grid-cols-2 gap-12 mb-12">
+                <div className="p-6 bg-gray-50/50 rounded-2xl">
+                  <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-4">Destination</h3>
+                  <p className="text-base font-bold text-gray-900">{selectedOrder.address?.firstName} {selectedOrder.address?.lastName}</p>
+                  <p className="text-xs font-semibold text-gray-500 mt-2 leading-relaxed uppercase">{selectedOrder.address?.street}<br />{selectedOrder.address?.city}, {selectedOrder.address?.state}</p>
+                  <p className="text-[10px] font-bold text-green-600 mt-4 tracking-wider uppercase">{selectedOrder.address?.phone}</p>
                 </div>
-                <div className="text-right">
-                  <h3 className="font-bold text-gray-700 text-sm uppercase mb-2">Payment:</h3>
-                  <p className="font-medium">{selectedOrder.paymentType}</p>
-                  <p className={`text-sm font-bold ${selectedOrder.isPaid ? 'text-green-600' : 'text-orange-500'}`}>
-                    {selectedOrder.isPaid ? 'PAID' : 'PENDING'}
+                <div className="p-6 bg-gray-50/50 rounded-2xl text-right flex flex-col items-end">
+                  <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-4">Protocol Details</h3>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clearing Type</p>
+                  <p className="text-base font-bold text-gray-900 uppercase mb-4">{selectedOrder.paymentType}</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                  <p className={`text-base font-bold uppercase ${selectedOrder.isPaid ? 'text-green-600' : 'text-orange-500'}`}>
+                    {selectedOrder.isPaid ? 'Cleared ✓' : 'Awaiting Payment'}
                   </p>
                 </div>
               </div>
 
-              <table className="w-full mb-8">
-                <thead className="border-b-2 border-gray-100">
-                  <tr>
-                    <th className="text-left py-2 text-sm font-semibold text-gray-600">Item</th>
-                    <th className="text-right py-2 text-sm font-semibold text-gray-600">Qty</th>
-                    <th className="text-right py-2 text-sm font-semibold text-gray-600">Price</th>
-                    <th className="text-right py-2 text-sm font-semibold text-gray-600">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {selectedOrder.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="py-3 text-sm text-gray-800">{item.product?.name || "Product Unavailable"}</td>
-                      <td className="py-3 text-sm text-gray-600 text-right">{item.quantity}</td>
-                      <td className="py-3 text-sm text-gray-600 text-right">
-                        {currency}{item.product?.offerPrice || 0}
-                      </td>
-                      <td className="py-3 text-sm font-medium text-gray-800 text-right">
-                        {currency}{item.product?.offerPrice ? (item.product.offerPrice * item.quantity) : 0}
-                      </td>
+              <div className="mb-12">
+                <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-6">Inventory Items</h3>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-gray-100">
+                      <th className="text-left pb-4 text-[11px] font-bold text-gray-900 uppercase tracking-widest">Description</th>
+                      <th className="text-center pb-4 text-[11px] font-bold text-gray-900 uppercase tracking-widest">Qty</th>
+                      <th className="text-right pb-4 text-[11px] font-bold text-gray-900 uppercase tracking-widest">Rate</th>
+                      <th className="text-right pb-4 text-[11px] font-bold text-gray-900 uppercase tracking-widest">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {selectedOrder.items.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="py-5 text-sm font-bold text-gray-900 uppercase tracking-tight">{item.product?.name || "Product Unavailable"}</td>
+                        <td className="py-5 text-xs font-bold text-gray-500 text-center">{item.quantity}</td>
+                        <td className="py-5 text-xs font-bold text-gray-500 text-right">{currency}{item.product?.offerPrice?.toLocaleString() || 0}</td>
+                        <td className="py-5 text-sm font-bold text-gray-900 text-right">
+                          {currency}{item.product?.offerPrice ? (item.product.offerPrice * item.quantity).toLocaleString() : 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-              <div className="flex justify-end border-t border-gray-100 pt-4">
-                <div className="w-48">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">{currency}{selectedOrder.amount}</span>
+              <div className="flex justify-end pt-8 border-t border-gray-100">
+                <div className="w-full max-w-[240px] space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Payload Value</span>
+                    <span className="text-sm font-bold text-gray-900">{currency}{(selectedOrder.amount).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-600">Delivery</span>
-                    <span className="font-medium">{currency}0.00</span>
+                  <div className="flex justify-between">
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Logistics Surcharge</span>
+                    <span className="text-sm font-bold text-gray-300">{currency}0.00</span>
                   </div>
-                  <div className="flex justify-between border-t border-gray-200 pt-2 text-lg font-bold">
-                    <span>Total</span>
-                    <span>{currency}{selectedOrder.amount}</span>
+                  <div className="flex justify-between border-t border-gray-900 pt-4 mt-2">
+                    <span className="text-[13px] font-bold text-gray-900 uppercase tracking-[0.1em]">Total Net</span>
+                    <span className="text-2xl font-bold text-gray-900">{currency}{selectedOrder.amount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 rounded-b-xl">
-              <button onClick={() => setSelectedOrder(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Close</button>
-              <button onClick={() => window.print()} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dull shadow-sm flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                Print Invoice
-              </button>
+            <div className="p-8 bg-gray-50 border-t border-gray-100 flex justify-end gap-4 rounded-b-[2.5rem]">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="px-8 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-colors"
+              >Dismiss</button>
+              <button
+                onClick={() => window.print()}
+                className="px-10 py-4 bg-gray-900 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl shadow-gray-200 hover:bg-black transition-all transform hover:-translate-y-1 active:translate-y-0"
+              >Print Protocol</button>
             </div>
           </div>
         </div>
