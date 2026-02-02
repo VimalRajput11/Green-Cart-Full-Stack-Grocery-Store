@@ -64,7 +64,10 @@ const ProductDetails = () => {
 
                 {/* Product Info */}
                 <div className="flex-1 md:w-1/2 lg:pl-4">
-                    <span className="text-green-600 text-sm font-semibold tracking-wide uppercase px-2 py-1 bg-green-50 rounded-md inline-block mb-3">{product.category}</span>
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="text-green-600 text-sm font-semibold tracking-wide uppercase px-2 py-1 bg-green-50 rounded-md inline-block">{product.category}</span>
+                        {product.weight && <span className="text-gray-500 text-sm font-medium px-2 py-1 bg-gray-100 rounded-md inline-block">{product.weight}</span>}
+                    </div>
                     <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-800 leading-tight mb-2 capitalize">{product.name}</h1>
 
                     <div className="flex items-center gap-2 mb-6">

@@ -12,7 +12,7 @@ const ProductCard = ({ product }) => {
                 scrollTo(0, 0);
             }}
             className="border border-gray-300 rounded-md p-4 bg-white w-full max-w-[200px] shadow-sm flex flex-col justify-between h-[300px]">
-     <div className="group cursor-pointer flex items-center justify-center px-2 h-[130px]"> 
+            <div className="group cursor-pointer flex items-center justify-center px-2 h-[130px]">
                 <img
                     className="group-hover:scale-105 transition max-h-full max-w-full object-contain"
                     src={product.image[0]}
@@ -21,7 +21,7 @@ const ProductCard = ({ product }) => {
             </div>
             <div className="flex flex-col justify-between flex-1 mt-2 text-sm text-gray-500/70">
                 <div>
-                    <p>{product.category}</p>
+                    <p>{product.category} {product.weight && `• ${product.weight}`}</p>
                     <p className="text-gray-700 font-medium text-base truncate w-full">{product.name}</p>
                     <div className="flex items-center gap-0.5 mt-1">
                         {Array(5).fill('').map((_, i) => (

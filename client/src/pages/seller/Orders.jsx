@@ -216,7 +216,7 @@ const Orders = () => {
                       </div>
                       <div className="flex-1">
                         <p className="font-medium text-gray-800 text-sm line-clamp-1">{item.product?.name || "Product Unavailable"}</p>
-                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                        <p className="text-xs text-gray-500">Qty: {item.quantity} {item.product?.weight && `• ${item.product.weight}`}</p>
                       </div>
                       <p className="font-medium text-gray-600 text-sm">
                         {currency}{item.product?.offerPrice ? (item.product.offerPrice * item.quantity) : 'N/A'}

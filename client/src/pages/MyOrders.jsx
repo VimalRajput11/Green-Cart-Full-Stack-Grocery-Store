@@ -189,6 +189,7 @@ const MyOrders = () => {
                         <p className="text-sm text-gray-500 mb-1">{item.product?.category}</p>
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-xs bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-600">Qty: {item.quantity}</span>
+                          {item.product?.weight && <span className="text-xs bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-600">{item.product.weight}</span>}
                           <span className="font-semibold text-primary">{currency}{item.amount || (item.product.offerPrice * item.quantity)}</span>
                         </div>
                       </div>

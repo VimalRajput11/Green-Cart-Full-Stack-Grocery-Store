@@ -24,8 +24,10 @@ const Cart = () => {
         let tempArray = [];
         for (const key in cartItems) {
             const product = products.find((item) => item._id === key);
-            product.quantity = cartItems[key];
-            tempArray.push(product);
+            if (product) {
+                // Return a new object to avoid mutating the original products in context
+                tempArray.push({ ...product, quantity: cartItems[key] });
+            }
         }
         setCartArray(tempArray);
     };
@@ -201,10 +203,10 @@ const Cart = () => {
                                                 <span className="text-xs text-gray-500 mr-2 font-medium">Qty:</span>
                                                 <select
                                                     onChange={e => updateCartItem(product._id, Number(e.target.value))}
-                                                    value={cartItems[product._id]}
+                                                    value={cartItems[product._id] || product.quantity}
                                                     className="bg-transparent text-sm font-bold outline-none cursor-pointer"
                                                 >
-                                                    {Array(Math.max(cartItems[product._id] + 5, 10)).fill('').map((_, i) => (
+                                                    {Array(Math.max((cartItems[product._id] || product.quantity || 0) + 5, 10)).fill('').map((_, i) => (
                                                         <option key={i} value={i + 1}>{i + 1}</option>
                                                     ))}
                                                 </select>

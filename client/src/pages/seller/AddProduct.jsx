@@ -11,6 +11,7 @@ const AddProduct = () => {
     const [category, setCategory] = useState('');
     const [price, setPrice] = useState('');
     const [offerPrice, setOfferPrice] = useState('');
+    const [weight, setWeight] = useState('');
 
     const { axios, categories } = useAppContext();
 
@@ -23,7 +24,8 @@ const AddProduct = () => {
                 description: description.split('\n'),
                 category,
                 price,
-                offerPrice
+                offerPrice,
+                weight
             }
 
             const formData = new FormData();
@@ -42,6 +44,7 @@ const AddProduct = () => {
                 setCategory('')
                 setPrice('')
                 setOfferPrice('')
+                setWeight('')
                 setFiles([])
             }
             else {
@@ -110,6 +113,12 @@ const AddProduct = () => {
                         <label className="text-base font-medium" htmlFor="offer-price">Offer Price</label>
                         <input onChange={(e) => setOfferPrice(e.target.value)} value={offerPrice}
                             id="offer-price" type="number" placeholder="0" className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40" required />
+                    </div>
+
+                    <div className="flex-1 flex flex-col gap-1 w-32">
+                        <label className="text-base font-medium" htmlFor="weight">Weight/Unit</label>
+                        <input onChange={(e) => setWeight(e.target.value)} value={weight}
+                            id="weight" type="text" placeholder="e.g. 1kg or 500g" className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40" required />
                     </div>
                 </div>
 
