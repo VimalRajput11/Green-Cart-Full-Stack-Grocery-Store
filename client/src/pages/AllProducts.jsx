@@ -4,11 +4,16 @@ import ProductCard from '../components/ProductCard';
 import { assets } from '../assets/assets';
 
 const AllProducts = () => {
-  const { products, searchQuery } = useAppContext();
+  const { products, searchQuery, categories } = useAppContext();
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
   const [category, setCategory] = useState([]);
   const [sortType, setSortType] = useState('relevant');
+
+  // Use dynamic categories if available, otherwise fallback to a default list
+  const categoriesList = categories && categories.length > 0
+    ? categories.map(cat => cat.name)
+    : ['Fruits', 'Vegetables', 'Dairy', 'Instant', 'Essentials', 'Bread'];
 
   const toggleCategory = (e) => {
     if (category.includes(e.target.value)) {
@@ -81,8 +86,7 @@ const AllProducts = () => {
           <div className={`border border-gray-200 pl-5 py-5 mt-6 rounded-lg bg-white shadow-sm ${showFilter ? '' : 'hidden'} sm:block`}>
             <p className='mb-3 text-sm font-semibold uppercase tracking-wider text-gray-900'>Categories</p>
             <div className='flex flex-col gap-3 text-sm font-light text-gray-700'>
-              {/* Hardcoded categories or dynamic from assets if imported. Using common ones for now based on context */}
-              {['Fruits', 'Vegetables', 'Dairy', 'Instant', 'Essentials', 'Bread'].map((cat) => (
+              {categoriesList.map((cat) => (
                 <label key={cat} className='flex items-center gap-2 cursor-pointer hover:text-green-600 transition'>
                   <input className='w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded' type="checkbox" value={cat} onChange={toggleCategory} />
                   {cat}

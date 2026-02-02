@@ -1,11 +1,14 @@
 import { v2 as cloudinary } from 'cloudinary';
 import Product from "../models/Product.js";
 
-// Helper to upload Buffer to Cloudinary
+// Helper to upload Buffer to Cloudinary using Stream
 const uploadToCloudinary = (buffer) => {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-            { resource_type: 'image', folder: 'green-cart' },
+            {
+                resource_type: 'auto',
+                folder: 'green-cart'
+            },
             (error, result) => {
                 if (error) reject(error);
                 else resolve(result.secure_url);

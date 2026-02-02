@@ -1,6 +1,23 @@
 import Category from '../models/Category.js';
 import { v2 as cloudinary } from 'cloudinary';
 
+// Helper to upload Buffer to Cloudinary using Stream
+const uploadToCloudinary = (buffer) => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                resource_type: 'auto',
+                folder: 'green-cart'
+            },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+            }
+        );
+        stream.end(buffer);
+    });
+};
+
 // Add new category
 const addCategory = async (req, res) => {
     try {
@@ -18,8 +35,7 @@ const addCategory = async (req, res) => {
 
         let imageUrl = "";
         if (imageFile) {
-            const uploadRes = await cloudinary.uploader.upload(imageFile.path, { resource_type: 'image' });
-            imageUrl = uploadRes.secure_url;
+            imageUrl = await uploadToCloudinary(imageFile.buffer);
         }
 
         const category = new Category({

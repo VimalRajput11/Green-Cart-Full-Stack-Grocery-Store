@@ -12,12 +12,42 @@ const AddProduct = () => {
     const [price, setPrice] = useState('');
     const [offerPrice, setOfferPrice] = useState('');
     const [weight, setWeight] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const { axios, categories } = useAppContext();
+
+    // Helper to resize image on client side
+    const resizeImage = (file, maxWidth = 800) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = maxWidth / img.width;
+                    if (scale < 1) {
+                        canvas.width = maxWidth;
+                        canvas.height = img.height * scale;
+                    } else {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                    }
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/webp' }));
+                    }, 'image/webp', 0.8);
+                };
+            };
+        });
+    };
 
     const onSubmitHandler = async (event) => {
         try {
             event.preventDefault();
+            setLoading(true);
 
             const productData = {
                 name,
@@ -31,8 +61,12 @@ const AddProduct = () => {
             const formData = new FormData();
             formData.append('productData', JSON.stringify(productData));
 
+            // Compress and append all selected images
             for (let i = 0; i < files.length; i++) {
-                formData.append('images', files[i]);
+                if (files[i]) {
+                    const optimizedFile = await resizeImage(files[i]);
+                    formData.append('images', optimizedFile);
+                }
             }
 
             const { data } = await axios.post('/api/product/add', formData)
@@ -52,6 +86,8 @@ const AddProduct = () => {
             }
         } catch (error) {
             toast.error(error.message);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -122,7 +158,9 @@ const AddProduct = () => {
                     </div>
                 </div>
 
-                <button className="px-8 py-2.5 bg-primary text-white font-medium rounded cursor-pointer hover:bg-primary-dull">ADD</button>
+                <button disabled={loading} className={`px-8 py-2.5 bg-primary text-white font-medium rounded cursor-pointer hover:bg-primary-dull ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {loading ? 'Adding...' : 'ADD'}
+                </button>
 
             </form>
         </div>

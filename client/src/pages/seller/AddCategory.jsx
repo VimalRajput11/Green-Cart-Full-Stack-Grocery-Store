@@ -8,21 +8,54 @@ const AddCategory = () => {
     const [image, setImage] = useState(false);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const { axios, getCategories } = useAppContext();
+
+    // Helper to resize image on client side
+    const resizeImage = (file, maxWidth = 500) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = maxWidth / img.width;
+                    if (scale < 1) {
+                        canvas.width = maxWidth;
+                        canvas.height = img.height * scale;
+                    } else {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                    }
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/webp' }));
+                    }, 'image/webp', 0.8);
+                };
+            };
+        });
+    };
 
     const onSubmitHandler = async (event) => {
         try {
             event.preventDefault();
+            setLoading(true);
 
             if (!image) {
+                setLoading(false);
                 return toast.error("Category image is required");
             }
+
+            const optimizedImage = await resizeImage(image);
 
             const formData = new FormData();
             formData.append('name', name);
             formData.append('description', description);
-            formData.append('image', image);
+            formData.append('image', optimizedImage);
 
             const { data } = await axios.post('/api/category/add', formData);
 
@@ -39,6 +72,8 @@ const AddCategory = () => {
             }
         } catch (error) {
             toast.error(error.message);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -68,7 +103,9 @@ const AddCategory = () => {
                         placeholder="Short description..."></textarea>
                 </div>
 
-                <button className="px-8 py-2.5 bg-primary text-white font-medium rounded cursor-pointer hover:bg-primary-dull transition">Create Category</button>
+                <button disabled={loading} className={`px-8 py-2.5 bg-primary text-white font-medium rounded cursor-pointer hover:bg-primary-dull transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {loading ? 'Processing...' : 'Create Category'}
+                </button>
 
             </form>
         </div>
