@@ -90,14 +90,16 @@ const ProductDetails = () => {
                         <p className="text-gray-500 text-sm">Inclusive of all taxes</p>
                     </div>
 
-                    <div className="mb-8">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-3">About this item</h3>
-                        <ul className="list-disc list-inside text-gray-600 space-y-2 leading-relaxed">
-                            {product.description.map((desc, index) => (
-                                <li key={index} className="pl-1">{desc}</li>
-                            ))}
-                        </ul>
-                    </div>
+                    {product.description.some(desc => desc.trim() !== "") && (
+                        <div className="mb-8">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-3">About this item</h3>
+                            <ul className="list-disc list-inside text-gray-600 space-y-2 leading-relaxed">
+                                {product.description.map((desc, index) => (
+                                    desc.trim() !== "" && <li key={index} className="pl-1">{desc}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
 
                     <div className="flex flex-col sm:flex-row gap-4 mb-4">
                         {product.stock <= 0 ? (

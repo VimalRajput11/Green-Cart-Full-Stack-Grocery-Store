@@ -54,7 +54,7 @@ const AddProduct = () => {
 
             const productData = {
                 name,
-                description: description.split('\n'),
+                description: description.split('\n').filter(desc => desc.trim() !== ''),
                 category,
                 price,
                 offerPrice,
