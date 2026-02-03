@@ -188,7 +188,7 @@ const ProductList = () => {
                         </div>
                         <div className="flex flex-col gap-1">
                           <p className="font-bold text-gray-900 text-lg leading-tight group-hover:text-green-600 transition-colors">{product.name}</p>
-                          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{product.weight || 'Default Unit'}</p>
+                          {product.weight && <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{product.weight}</p>}
                         </div>
                       </div>
                     </td>

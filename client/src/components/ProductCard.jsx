@@ -35,7 +35,7 @@ const ProductCard = ({ product }) => {
             <div className="flex flex-col flex-1">
                 <p className="text-gray-900 font-bold text-[16px] line-clamp-2 leading-tight mb-0 h-9">{product.name}</p>
                 <div className="flex items-center justify-between mt-1">
-                    <p className="text-gray-400 text-[13px] mb-0 font-medium">{product.weight || '1 unit'}</p>
+                    {product.weight && <p className="text-gray-400 text-[13px] mb-0 font-medium">{product.weight}</p>}
                     {product.stock <= 0 ? (
                         <span className="text-red-500 text-[10px] font-bold uppercase tracking-tighter bg-red-50 px-1.5 py-0.5 rounded">Out of Stock</span>
                     ) : product.stock < 5 ? (

@@ -169,7 +169,7 @@ const AddProduct = () => {
                                 <div className="flex flex-col gap-2">
                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1" htmlFor="weight">Net Weight</label>
                                     <input onChange={(e) => setWeight(e.target.value)} value={weight}
-                                        id="weight" type="text" placeholder="e.g. 1kg" className="w-full bg-gray-50/50 outline-none py-5 px-6 rounded-2xl border border-gray-100 focus:border-green-500/50 font-semibold text-gray-900" required />
+                                        id="weight" type="text" placeholder="e.g. 1kg" className="w-full bg-gray-50/50 outline-none py-5 px-6 rounded-2xl border border-gray-100 focus:border-green-500/50 font-semibold text-gray-900" />
                                 </div>
 
                                 <div className="flex flex-col gap-2">
