@@ -33,22 +33,22 @@ const ProductCard = ({ product }) => {
             </div>
 
             <div className="flex flex-col flex-1">
-                <p className="text-gray-900 font-bold text-[16px] line-clamp-2 leading-tight mb-0 h-9">{product.name}</p>
+                <p className="text-gray-800 font-semibold text-[15px] line-clamp-2 leading-tight mb-0 h-9">{product.name}</p>
                 <div className="flex items-center justify-between mt-1">
-                    {product.weight && <p className="text-gray-400 text-[13px] mb-0 font-medium">{product.weight}</p>}
+                    {product.weight && <p className="text-gray-500 text-[12px] mb-0 font-medium">{product.weight}</p>}
                     {product.stock <= 0 ? (
                         <span className="text-red-500 text-[10px] font-bold uppercase tracking-tighter bg-red-50 px-1.5 py-0.5 rounded">Out of Stock</span>
                     ) : product.stock < 5 ? (
-                        <span className="text-orange-500 text-[10px] font-bold tracking-tighter">Only {product.stock} left</span>
+                        <span className="text-orange-500 text-[10px] font-semibold tracking-tighter">Only {product.stock} left</span>
                     ) : null}
                 </div>
 
                 <div className="mt-2">
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                            <span className="text-gray-900 font-bold text-[16px]">₹{product.offerPrice}</span>
+                            <span className="text-gray-800 font-bold text-[16px]">₹{product.offerPrice}</span>
                             {product.price > product.offerPrice && (
-                                <span className="text-gray-400 text-[10px] line-through leading-none">₹{product.price}</span>
+                                <span className="text-gray-400 text-[11px] line-through leading-none">₹{product.price}</span>
                             )}
                         </div>
 

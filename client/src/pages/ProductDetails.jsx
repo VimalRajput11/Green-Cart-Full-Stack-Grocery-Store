@@ -68,7 +68,7 @@ const ProductDetails = () => {
                         <span className="text-green-600 text-sm font-semibold tracking-wide uppercase px-2 py-1 bg-green-50 rounded-md inline-block">{product.category}</span>
                         {product.weight && <span className="text-gray-500 text-sm font-medium px-2 py-1 bg-gray-100 rounded-md inline-block">{product.weight}</span>}
                     </div>
-                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-800 leading-tight mb-2 capitalize">{product.name}</h1>
+                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-800 leading-tight mb-2 capitalize">{product.name}</h1>
 
                     <div className="flex items-center gap-2 mb-6">
                         <div className="flex text-yellow-500">
@@ -76,12 +76,12 @@ const ProductDetails = () => {
                                 <svg key={i} className={`w-5 h-5 ${i < 4 ? 'fill-current' : 'text-gray-300 fill-current'}`} viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
                             ))}
                         </div>
-                        <span className="text-gray-500 text-sm font-medium">(120 Reviews)</span>
+                        <span className="text-gray-400 text-sm font-medium">(120 Reviews)</span>
                     </div>
 
                     <div className="border-t border-b border-gray-100 py-6 mb-6">
                         <div className="flex items-end gap-3 mb-2">
-                            <span className="text-3xl md:text-4xl font-bold text-gray-900">{currency}{product.offerPrice}</span>
+                            <span className="text-3xl md:text-4xl font-bold text-gray-800">{currency}{product.offerPrice}</span>
                             <span className="text-gray-400 text-lg line-through mb-1">{currency}{product.price}</span>
                             <span className="text-green-600 font-semibold mb-1 ml-2 px-2 py-0.5 bg-green-100 rounded text-sm">
                                 {Math.round(((product.price - product.offerPrice) / product.price) * 100)}% OFF
