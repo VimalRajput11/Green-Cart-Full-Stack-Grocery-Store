@@ -16,7 +16,7 @@ const AddProduct = () => {
     const [stock, setStock] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { axios, categories } = useAppContext();
+    const { axios, categories, fetchProducts } = useAppContext();
     const navigate = useNavigate();
 
     // Helper to resize image on client side
@@ -77,6 +77,8 @@ const AddProduct = () => {
 
             if (data.success) {
                 toast.success(data.message);
+                // Refresh products list immediately for real-time updates
+                await fetchProducts();
                 setName('')
                 setDescription('')
                 setCategory('')

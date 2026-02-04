@@ -240,12 +240,21 @@ const RecipeChatbot = () => {
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                            onKeyDown={(e) => e.key === 'Enter' && !loading && handleSend()}
                             placeholder="Type a message..."
-                            className="flex-1 bg-gray-100 text-sm px-4 py-2 rounded-full focus:outline-none focus:ring-1 focus:ring-primary/50"
+                            disabled={loading}
+                            className="flex-1 bg-gray-100 text-sm px-4 py-2 rounded-full focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
-                        <button onClick={handleSend} className="bg-primary hover:bg-primary-dull text-white p-2 rounded-full shadow-sm transition">
-                            <img src={assets.white_arrow_icon} alt="send" className="w-4 h-4 rotate-0" />
+                        <button
+                            onClick={handleSend}
+                            disabled={loading || !input.trim()}
+                            className="bg-primary hover:bg-primary-dull text-white p-2 rounded-full shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                        >
+                            {loading ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            ) : (
+                                <img src={assets.white_arrow_icon} alt="send" className="w-4 h-4 rotate-0" />
+                            )}
                         </button>
                     </div>
 

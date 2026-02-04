@@ -13,7 +13,9 @@ export const generateRecipe = async (req, res) => {
 
         // Fetch all products to recommend real store items
         const allProducts = await Product.find({}, 'name _id category offerPrice image');
-        const productListString = allProducts.map(p => `- ${p.name} (ID: ${p._id}, Category: ${p.category})`).join('\n');
+
+        // Create product list for AI with IDs (for internal matching only)
+        const productListForAI = allProducts.map(p => `- ${p.name} (ID: ${p._id}, Category: ${p.category})`).join('\n');
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
@@ -31,25 +33,28 @@ export const generateRecipe = async (req, res) => {
 
             CURRENT USER MESSAGE: "${message}"
 
-            AVAILABLE STORE PRODUCTS:
-            ${productListString}
+            AVAILABLE STORE PRODUCTS (Internal Reference Only - DO NOT show IDs to user):
+            ${productListForAI}
 
             STRICT GUIDELINES:
-            1. Suggest HIGH-QUALITY, professional recipes.
-            2. If the user asks to "add to cart", check the CONVERSATION HISTORY to see which recipe products to add.
-            3. In the "recommendedProductIds" field, you MUST provide the exact IDs from the "AVAILABLE" list.
-            4. If the user says "add to cart", set "addToCartIntent": true and repeat the IDs in "recommendedProductIds".
-            5. Use "**bold**" for emphasis.
+            1. **LANGUAGE**: Respond in the SAME LANGUAGE as the user's message. If they write in Hindi, respond in Hindi. If English, respond in English. If mixed, use the dominant language.
+            2. **NO PRODUCT IDs IN USER-FACING TEXT**: NEVER include product IDs (like "ID: 69819f...") in your "text" or "instructions" fields. IDs are ONLY for the "recommendedProductIds" array.
+            3. Suggest HIGH-QUALITY, professional recipes with clear step-by-step instructions.
+            4. When mentioning ingredients in instructions, use ONLY the product name (e.g., "टमाटर" or "Tomato"), NEVER include IDs.
+            5. If the user asks to "add to cart", check the CONVERSATION HISTORY to see which recipe products to add.
+            6. In the "recommendedProductIds" field, provide the exact IDs from the "AVAILABLE STORE PRODUCTS" list.
+            7. If the user says "add to cart", set "addToCartIntent": true and repeat the IDs in "recommendedProductIds".
+            8. Use "**bold**" for emphasis in your text responses.
 
             RESPONSE FORMAT (JSON ONLY):
             {
-                "text": "Your professional response",
+                "text": "Your professional response in the user's language",
                 "addToCartIntent": false,
                 "recipe": {
-                    "name": "Recipe Name",
-                    "ingredients": ["Ingredient 1"],
-                    "instructions": ["Step 1"],
-                    "recommendedProductIds": ["ID1"]
+                    "name": "Recipe Name (in user's language)",
+                    "ingredients": ["Ingredient 1 (in user's language)"],
+                    "instructions": ["Step 1 (in user's language, NO IDs)"],
+                    "recommendedProductIds": ["ID1", "ID2"]
                 }
             }
         `;
