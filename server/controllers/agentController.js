@@ -1,6 +1,6 @@
 import DeliveryAgent from '../models/DeliveryAgent.js';
 import Order from '../models/Order.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 import Razorpay from "razorpay";
 import crypto from "crypto";
