@@ -7,7 +7,8 @@
 //   2) Preview what would be imported (nothing is uploaded or saved):
 //        node scripts/import-products.mjs import
 //
-//   3) Import for real (uploads images to Cloudinary, creates products):
+//   3) Import for real (uploads images to Cloudinary, creates products).
+//      Tip: try a few first with --limit=5
 //        node scripts/import-products.mjs import --commit
 //
 // Re-running is safe: products whose name already exists are skipped.
@@ -147,8 +148,12 @@ const importSheet = async (commit) => {
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 
+  const limitArg = process.argv.find((a) => a.startsWith('--limit='));
+  const batch = limitArg ? ready.slice(0, Number(limitArg.split('=')[1]) || ready.length) : ready;
+  if (batch.length < ready.length) console.log(`Importing first ${batch.length} of ${ready.length} (--limit)`);
+
   let done = 0; let failed = 0;
-  for (const { r, item, mrp, price, stock } of ready) {
+  for (const { r, item, mrp, price, stock } of batch) {
     try {
       const image = [];
       for (const file of item.images.slice(0, MAX_IMAGES)) image.push(await uploadImage(file));
@@ -165,7 +170,7 @@ const importSheet = async (commit) => {
       });
       existing.add(norm(r.name));
       done++;
-      console.log(`[${done}/${ready.length}] added ${r.name} (${image.length} images)`);
+      console.log(`[${done}/${batch.length}] added ${r.name} (${image.length} images)`);
     } catch (error) {
       failed++;
       console.log(`  FAILED ${r.name}: ${error.message}`);
