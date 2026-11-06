@@ -74,7 +74,7 @@ export const readProductFolder = (root) => {
         if (!fs.statSync(dir).isDirectory()) continue;
         const files = fs.readdirSync(dir);
         // Main image (named after the product) first, then the rest
-        const images = files.filter((f) => IMAGE_EXT.test(f))
+        const images = files.filter((f) => IMAGE_EXT.test(f) && fs.statSync(path.join(dir, f)).size > 0)
           .sort((a, b) => Number(b.startsWith(name)) - Number(a.startsWith(name)) || a.localeCompare(b))
           .map((f) => path.join(dir, f));
 

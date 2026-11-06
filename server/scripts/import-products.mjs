@@ -123,6 +123,7 @@ const importSheet = async (commit) => {
     const mrp = Number(r.mrp); const price = Number(r.price); const stock = r.stock === '' ? 0 : Number(r.stock);
     const item = folderItems.get(r.folder);
     if (!item) { problems.push(`row ${line} "${r.name}": folder not found`); continue; }
+    if (!item.images.length) { problems.push(`row ${line} "${r.name}": no usable photos`); continue; }
     if (!r.mrp || !r.price) { problems.push(`row ${line} "${r.name}": mrp/price missing`); continue; }
     if (!(mrp > 0) || !(price >= 0) || price > mrp) { problems.push(`row ${line} "${r.name}": invalid prices (mrp ${r.mrp}, price ${r.price})`); continue; }
     if (!Number.isInteger(stock) || stock < 0) { problems.push(`row ${line} "${r.name}": invalid stock "${r.stock}"`); continue; }
