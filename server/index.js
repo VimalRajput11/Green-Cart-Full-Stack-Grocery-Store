@@ -30,7 +30,12 @@ const allowedOrigins = [
 //Middeware configuration
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+// Outside production, also allow any localhost port (Vite picks 5174+ when 5173 is busy)
+const isLocalDev = (origin) => process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin) || isLocalDev(origin)),
+  credentials: true,
+}));
 
 app.get('/', (req, res) => res.send('API is working'));
 app.use('/api/user', userRouter);
