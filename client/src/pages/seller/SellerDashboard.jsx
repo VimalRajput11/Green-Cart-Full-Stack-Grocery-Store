@@ -10,7 +10,9 @@ const PACK_SLA_MIN = 10; // new orders should be packed within this many minutes
 
 const dayKey = (d) => new Date(d).toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
 const minutesSince = (d) => Math.max(0, Math.round((Date.now() - new Date(d).getTime()) / 60000));
-const ageLabel = (m) => (m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d`);
+const STALE_MIN = 24 * 60; // orders older than a day are treated as stale, not urgent
+const ageLabel = (m, date) => (m < 60 ? `${m}m` : m < STALE_MIN ? `${Math.floor(m / 60)}h ${m % 60}m` : new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }));
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 const Card = ({ title, action, children, className = '' }) => (
   <section className={`bg-white rounded-2xl border border-gray-100 shadow-sm ${className}`}>
@@ -90,14 +92,19 @@ const SellerDashboard = () => {
     const revYesterday = sumBy(yOrders);
     const change = revYesterday > 0 ? Math.round(((revToday - revYesterday) / revYesterday) * 100) : null;
 
-    const toPack = orders.filter((o) => o.status === STATUS.PLACED).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    // Fresh orders first (oldest first = most urgent), stale ones (over a day old) at the end
+    const placed = orders.filter((o) => o.status === STATUS.PLACED);
+    const byAge = (a, b) => new Date(a.createdAt) - new Date(b.createdAt);
+    const freshToPack = placed.filter((o) => minutesSince(o.createdAt) < STALE_MIN).sort(byAge);
+    const staleToPack = placed.filter((o) => minutesSince(o.createdAt) >= STALE_MIN).sort((a, b) => byAge(b, a));
+    const toPack = [...freshToPack, ...staleToPack];
     const needRider = orders.filter((o) => PRE_PICKUP.includes(o.status) && !o.assignedTo);
     const awaitingPickup = orders.filter((o) => o.status === STATUS.PACKED && o.assignedTo);
     const inTransit = orders.filter((o) => IN_TRANSIT.includes(o.status));
     const deliveredToday = orders.filter((o) => o.status === STATUS.DELIVERED && dayKey(o.deliveredAt || o.updatedAt) === today);
     const failed = orders.filter((o) => o.status === STATUS.FAILED && dayKey(o.updatedAt) === today);
     const refunds = orders.filter((o) => o.refundStatus === 'Pending');
-    const overdue = toPack.filter((o) => minutesSince(o.createdAt) > PACK_SLA_MIN);
+    const overdue = freshToPack.filter((o) => minutesSince(o.createdAt) > PACK_SLA_MIN);
 
     // Last 7 days revenue
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -134,6 +141,7 @@ const SellerDashboard = () => {
     return {
       revToday, change, todayOrders, toPack, needRider, awaitingPickup, inTransit, deliveredToday, failed, refunds, overdue,
       days, weekRevenue, weekOrders, topSellers, outOfStock, lowStock, online, busy, cashWithRiders,
+      staleToPack,
       needsAction: toPack.length + needRider.filter((o) => o.status === STATUS.PACKED).length + refunds.length,
     };
   }, [orders, agents, products]);
@@ -222,21 +230,29 @@ const SellerDashboard = () => {
             <ul className="divide-y divide-gray-100">
               {m.toPack.slice(0, 6).map((o) => {
                 const age = minutesSince(o.createdAt);
-                const late = age > PACK_SLA_MIN;
+                const stale = age >= STALE_MIN;
+                const late = !stale && age > PACK_SLA_MIN;
                 const units = o.items.reduce((n, i) => n + i.quantity, 0);
                 return (
-                  <li key={o._id} className="flex items-center gap-3 px-5 py-3">
-                    <span className={`w-14 shrink-0 text-center text-xs font-bold rounded-lg py-1 ${late ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}`}>
-                      {ageLabel(age)}
+                  <li key={o._id} className={`flex items-center gap-3 px-5 py-3 ${stale ? 'bg-gray-50/60' : ''}`}>
+                    <span
+                      title={`Placed ${new Date(o.createdAt).toLocaleString()}`}
+                      className={`w-16 shrink-0 text-center text-xs font-bold rounded-lg py-1 ${stale ? 'bg-gray-200 text-gray-500' : late ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}
+                    >
+                      {ageLabel(age, o.createdAt)}
                     </span>
-                    <div className="flex -space-x-2 shrink-0">
-                      {o.items.slice(0, 3).map((it, i) => (
-                        <img key={i} src={optimizeImg(it.product?.image?.[0], 80)} alt="" className="w-8 h-8 rounded-full border-2 border-white bg-gray-50 object-contain" />
+                    {/* fixed width so order details line up whatever the item count */}
+                    <div className="hidden sm:block relative w-[72px] h-9 shrink-0">
+                      {o.items.slice(0, o.items.length > 3 ? 2 : 3).map((it, i) => (
+                        <img key={i} src={optimizeImg(it.product?.image?.[0], 80)} alt="" style={{ left: `${i * 18}px` }} className="absolute top-0 w-9 h-9 rounded-full border-2 border-white bg-gray-50 object-contain" />
                       ))}
+                      {o.items.length > 3 && (
+                        <span className="absolute top-0 left-[36px] w-9 h-9 rounded-full border-2 border-white bg-gray-100 text-[10px] font-bold text-gray-600 flex items-center justify-center">+{o.items.length - 2}</span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">#{shortId(o._id)} · {o.address?.firstName} {o.address?.lastName}</p>
-                      <p className="text-xs text-gray-500 truncate">{units} items · {currency}{o.amount} · {o.paymentType === 'COD' ? 'Cash on delivery' : 'Paid online'}</p>
+                      <p className="text-xs text-gray-500 truncate">{plural(units, 'item')} · {currency}{o.amount} · {o.paymentType === 'COD' ? 'Cash on delivery' : 'Paid online'}</p>
                     </div>
                     <button
                       disabled={busyId === o._id}
@@ -250,9 +266,22 @@ const SellerDashboard = () => {
               })}
             </ul>
           )}
+          {m.toPack.length > 6 && (
+            <button onClick={() => navigate('/seller/orders')} className="mx-5 mt-1 text-xs font-semibold text-green-700 hover:underline">
+              + {m.toPack.length - 6} more to pack
+            </button>
+          )}
+          {m.staleToPack.length > 0 && (
+            <div className={`mx-5 mt-3 ${m.needRider.length ? "" : "mb-5"} flex items-center justify-between gap-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3`}>
+              <p className="text-sm text-gray-700">
+                <span className="font-bold">{plural(m.staleToPack.length, 'order')}</span> older than a day still not packed. Pack them or cancel with a reason.
+              </p>
+              <button onClick={() => navigate('/seller/orders')} className="shrink-0 text-xs font-bold text-gray-800 underline">Review</button>
+            </div>
+          )}
           {m.needRider.length > 0 && (
-            <div className="mx-5 mb-5 mt-1 flex items-center justify-between gap-3 rounded-xl bg-orange-50 border border-orange-100 px-4 py-3">
-              <p className="text-sm text-orange-800"><span className="font-bold">{m.needRider.length}</span> order{m.needRider.length > 1 ? 's' : ''} waiting for a rider{m.online.length === 0 ? ' — no riders online' : ''}</p>
+            <div className="mx-5 mb-5 mt-3 flex items-center justify-between gap-3 rounded-xl bg-orange-50 border border-orange-100 px-4 py-3">
+              <p className="text-sm text-orange-800"><span className="font-bold">{plural(m.needRider.length, 'order')}</span> waiting for a rider{m.online.length === 0 ? ' — no riders online' : ''}</p>
               <button onClick={() => navigate('/seller/orders')} className="text-xs font-bold text-orange-800 underline">Assign</button>
             </div>
           )}
