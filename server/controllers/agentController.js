@@ -398,10 +398,17 @@ export const updateOrderStatus = async (req, res) => {
 
 
 
-const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_API_KEY,
-  key_secret: process.env.RAZORPAY_API_SECRET,
-});
+// Created lazily so a missing env var can't crash the server at startup
+let razorpayInstance;
+const getRazorpay = () => {
+  if (!razorpayInstance) {
+    razorpayInstance = new Razorpay({
+      key_id: process.env.RAZORPAY_API_KEY,
+      key_secret: process.env.RAZORPAY_API_SECRET,
+    });
+  }
+  return razorpayInstance;
+};
 
 export const createRazorpayOrder = async (req, res) => {
   try {
@@ -418,7 +425,7 @@ export const createRazorpayOrder = async (req, res) => {
       payment_capture: 1,
     };
 
-    const order = await razorpayInstance.orders.create(options);
+    const order = await getRazorpay().orders.create(options);
 
     return res.status(200).json({
       success: true,
