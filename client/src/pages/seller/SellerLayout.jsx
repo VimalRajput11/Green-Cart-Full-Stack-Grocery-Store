@@ -1,47 +1,36 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { assets } from '../../assets/assets';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const SellerLayout = () => {
-  const { navigate, axios } = useAppContext();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
+const I = ({ d }) => (
+  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
+);
 
-  const sidebarLinks = [
-    {
-      name: "Dashboard",
-      path: "/seller",
-      icon: assets.product_list_icon, // ideally use a dashboard icon
-    },
-    {
-      name: "Add Product",
-      path: "/seller/add-product",
-      icon: assets.add_icon,
-    },
-    {
-      name: "Product List",
-      path: "/seller/product-list",
-      icon: assets.product_list_icon,
-    },
-    {
-      name: "Orders",
-      path: "/seller/orders",
-      icon: assets.order_icon,
-    },
-    {
-      name: "Agents",
-      path: "/seller/agents",
-      icon: assets.agent_icon,
-    },
-  ];
+const NAV = [
+  { section: 'Store', items: [
+    { name: 'Overview', path: '/seller', end: true, icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+    { name: 'Orders', path: '/seller/orders', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+    { name: 'Delivery fleet', path: '/seller/agents', icon: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h2m8 0h2m-2 0H9m10 0h1a1 1 0 001-1v-3.65a1 1 0 00-.22-.62l-3.48-4.35A1 1 0 0016.52 6H13M9 17a2 2 0 11-4 0 2 2 0 014 0zm10 0a2 2 0 11-4 0 2 2 0 014 0z' },
+  ] },
+  { section: 'Catalogue', items: [
+    { name: 'Products', path: '/seller/product-list', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { name: 'Add product', path: '/seller/add-product', icon: 'M12 4v16m8-8H4' },
+    { name: 'Categories', path: '/seller/add-category', icon: 'M4 6h16M4 12h16M4 18h7' },
+  ] },
+];
+
+const SellerLayout = () => {
+  const { navigate, axios, setIsSeller } = useAppContext();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const logout = async () => {
     try {
       const { data } = await axios.get('/api/seller/logout');
       if (data.success) {
         toast.success(data.message);
+        setIsSeller?.(false);
         navigate('/');
       } else {
         toast.error(data.message);
@@ -52,102 +41,70 @@ const SellerLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] flex flex-col md:flex-row font-outfit">
-
-      {/* Mobile Header */}
-      <header className="md:hidden flex items-center justify-between px-8 py-6 bg-white border-b border-gray-50 z-[60]">
-        <Link to="/" className="flex items-center gap-2">
-          <img className="h-8" src={assets.logo} alt="logo" />
+    <div className="min-h-screen bg-[#f7f8fa] flex flex-col md:flex-row">
+      {/* Mobile header */}
+      <header className="md:hidden sticky top-0 z-[60] flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+        <Link to="/seller" className="flex items-center gap-2">
+          <img className="h-7" src={assets.logo} alt="GreenCart" />
+          <span className="text-[10px] font-bold text-green-700 bg-green-50 rounded px-1.5 py-0.5 uppercase tracking-wider">Seller</span>
         </Link>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="w-10 h-10 flex items-center justify-center bg-gray-50 rounded-xl text-gray-900 transition active:scale-95 shadow-sm border border-gray-100">
-          {sidebarOpen ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
-          )}
+        <button onClick={() => setSidebarOpen((o) => !o)} aria-label="Menu" className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-800">
+          <I d={sidebarOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
         </button>
       </header>
 
-      {/* Sidebar - Desktop */}
-      <aside className={`fixed md:sticky top-0 left-0 h-screen w-80 bg-white border-r border-gray-100 flex flex-col z-[100] transition-all duration-500 transform 
-                ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"} shadow-2xl md:shadow-none`}>
-
-        <div className="p-10 mb-4">
-          <Link to="/" className="flex flex-col gap-1 group">
-            <img className="h-10 w-fit" src={assets.logo} alt="logo" />
-            <span className="text-[10px] font-bold text-green-600 uppercase tracking-[0.3em] ml-0.5">Seller Central</span>
+      {/* Sidebar */}
+      <aside className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-white border-r border-gray-100 flex flex-col z-[100] transition-transform duration-300
+        ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="px-6 pt-6 pb-5 border-b border-gray-100">
+          <Link to="/seller" onClick={() => setSidebarOpen(false)} className="block">
+            <img className="h-8" src={assets.logo} alt="GreenCart" />
+            <span className="block text-[10px] font-bold text-green-700 uppercase tracking-[0.25em] mt-1.5">Seller central</span>
           </Link>
         </div>
 
-        <div className="px-6 flex-1 overflow-y-auto no-scrollbar">
-          <div className="mb-10 px-4">
-            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.25em] mb-6">Main Interface</p>
-            <nav className="flex flex-col gap-3">
-              {sidebarLinks.map((item) => (
-                <NavLink
-                  to={item.path}
-                  key={item.path}
-                  end={item.path === '/seller'}
-                  onClick={() => setSidebarOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 group ${isActive
-                      ? "bg-green-600 text-white shadow-xl shadow-green-500/20"
-                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50 hover:translate-x-1"
-                    }`
-                  }
-                >
-                  <div className="flex items-center gap-4">
-                    <img src={item.icon} alt={item.name} className={`w-5 h-5 transition-all ${location.pathname === item.path ? 'brightness-0 invert scale-110' : 'opacity-40 grayscale group-hover:opacity-100 group-hover:grayscale-0'}`} />
-                    <span className="text-sm font-bold tracking-tight">{item.name}</span>
-                  </div>
-                  {location.pathname === item.path && (
-                    <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-
-          <div className="px-4">
-            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.25em] mb-6">Store Systems</p>
-            <Link to="/seller/add-category" onClick={() => setSidebarOpen(false)} className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 group ${location.pathname === '/seller/add-category' ? 'bg-green-600 text-white shadow-xl' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50 hover:translate-x-1'}`}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`${location.pathname === '/seller/add-category' ? 'text-white' : 'opacity-40 grayscale group-hover:opacity-100 group-hover:grayscale-0'}`}><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-              <span className="text-sm font-bold tracking-tight">Category Matrix</span>
-            </Link>
-          </div>
-        </div>
-
-        <div className="p-10">
-          <div className="bg-gray-50 rounded-3xl p-6 mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+        <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-4 space-y-6">
+          {NAV.map((group) => (
+            <div key={group.section}>
+              <p className="px-3 mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{group.section}</p>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.end}
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition
+                      ${isActive ? 'bg-green-50 text-green-800' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span className={isActive ? 'text-green-700' : 'text-gray-400'}><I d={item.icon} /></span>
+                        {item.name}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-900">Premium Hub</span>
             </div>
-            <p className="text-[11px] font-bold text-gray-400 leading-relaxed">System status optimal. Database sync complete.</p>
-          </div>
+          ))}
+        </nav>
 
-          <button
-            onClick={logout}
-            className="w-full flex items-center justify-center gap-3 bg-red-50 text-red-600 py-4.5 py-5 rounded-2xl hover:bg-red-500 hover:text-white transition-all duration-300 font-bold text-xs uppercase tracking-[0.2em] shadow-sm hover:shadow-red-500/20 active:scale-95"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-            Sign Out
+        <div className="p-3 border-t border-gray-100 space-y-1">
+          <Link to="/" target="_blank" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
+            <span className="text-gray-400"><I d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></span>
+            View store
+          </Link>
+          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50">
+            <I d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            Sign out
           </button>
         </div>
       </aside>
 
-      {/* Overlay for mobile sidebar */}
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-gray-900/40 z-[90] md:hidden backdrop-blur-md animate-in fade-in duration-300"
-        ></div>
-      )}
+      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-gray-900/40 z-[90] md:hidden" />}
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0 md:h-screen overflow-y-auto no-scrollbar">
+      <main className="flex-1 min-w-0 md:h-screen overflow-y-auto">
         <Outlet />
       </main>
     </div>
