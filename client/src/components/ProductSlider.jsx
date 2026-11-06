@@ -55,7 +55,7 @@ const ProductSlider = ({ title, categoryName, products }) => {
                     className="flex overflow-x-auto gap-3 pb-2 no-scrollbar scroll-smooth w-full max-w-full"
                 >
                     {products.filter(p => p.stock > 0 || (p.stock === undefined && p.inStock)).map((product) => (
-                        <div key={product._id} className="min-w-[180px] md:min-w-[200px] flex-shrink-0">
+                        <div key={product._id} className="w-[150px] sm:w-[170px] md:w-[180px] shrink-0">
                             <ProductCard product={product} />
                         </div>
                     ))}

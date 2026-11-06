@@ -21,14 +21,14 @@ const ProductCard = ({ product }) => {
     };
 
     return (
-        <div className="group relative flex flex-col w-full h-full bg-white border border-gray-100 rounded-2xl p-3 hover:shadow-md transition-shadow">
+        <div className="group relative flex flex-col w-full min-w-0 h-full bg-white border border-gray-100 rounded-2xl p-3 hover:shadow-md transition-shadow">
             {discount > 0 && (
                 <span className="absolute top-0 left-3 z-10 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-1 rounded-b-md leading-none">
                     {discount}%<br />OFF
                 </span>
             )}
 
-            <button onClick={open} className="block aspect-square w-full mb-2" aria-label={product.name}>
+            <button onClick={open} className="block aspect-square w-full mb-2 overflow-hidden" aria-label={product.name}>
                 <img
                     className={`w-full h-full object-contain group-hover:scale-105 transition ${outOfStock ? 'grayscale opacity-60' : ''}`}
                     src={product.image[0]}
