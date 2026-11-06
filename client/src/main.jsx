@@ -4,6 +4,11 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { AppContextProvider } from './context/AppContext.jsx'
 
+// Support hash-style links (e.g. /#/seller) by converting them to normal paths (/seller)
+if (window.location.hash.startsWith('#/')) {
+  window.history.replaceState(null, '', window.location.hash.slice(1));
+}
+
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
   <AppContextProvider>
