@@ -158,7 +158,7 @@ const ProductDetails = () => {
                     <h2 className="text-3xl font-bold text-gray-800 mt-2">Related Products</h2>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3 md:gap-4">
                     {relatedProducts.filter((product) => product.stock > 0 || (product.stock === undefined && product.inStock)).length > 0 ? (
                         relatedProducts.filter((product) => product.stock > 0 || (product.stock === undefined && product.inStock)).map((product, index) => (
                             <div key={index} className="transform hover:scale-[1.02] transition-transform duration-300">

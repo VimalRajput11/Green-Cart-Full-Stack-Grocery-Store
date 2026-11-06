@@ -11,8 +11,9 @@ const ProductCard = ({ product }) => {
 
     const qty = cartItems[product._id] || 0;
     // A broken (negative) price is treated as unavailable rather than sold below zero
-    const outOfStock = product.stock <= 0 || !(product.offerPrice >= 0);
-    const discount = product.price > product.offerPrice
+    const validPrice = product.offerPrice >= 0 && product.price > 0;
+    const outOfStock = product.stock <= 0 || !validPrice;
+    const discount = validPrice && product.price > product.offerPrice
         ? Math.round(((product.price - product.offerPrice) / product.price) * 100)
         : 0;
 
@@ -53,7 +54,7 @@ const ProductCard = ({ product }) => {
 
             <div className="mt-auto pt-3 flex items-center justify-between gap-2">
                 <div className="leading-tight">
-                    <p className="text-[13px] font-bold text-gray-900">{currency}{product.offerPrice}</p>
+                    <p className="text-[13px] font-bold text-gray-900">{validPrice ? `${currency}${product.offerPrice}` : '—'}</p>
                     {discount > 0 && <p className="text-[11px] text-gray-400 line-through">{currency}{product.price}</p>}
                 </div>
 

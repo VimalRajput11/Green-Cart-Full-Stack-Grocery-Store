@@ -131,7 +131,7 @@ const AllProducts = () => {
 
           {/* Conditional Rendering: Sliders or Grid */}
           {isFiltering ? (
-            <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-8 gap-x-6'>
+            <div className='grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3 md:gap-4'>
               {filterProducts.map((product, index) => (
                 <div key={index} className="transform transition duration-500 hover:scale-[1.02]">
                   <ProductCard product={product} />
