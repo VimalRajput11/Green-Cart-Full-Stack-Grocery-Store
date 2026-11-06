@@ -1,89 +1,125 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import toast from 'react-hot-toast';
 import { assets } from '../../assets/assets';
 import ConfirmModal from '../../components/ConfirmModal';
+import { timeAgo } from '../../utils/orderStatus';
+
+const VEHICLES = ['Bike', 'Scooter', 'Cycle', 'EV'];
+const EMPTY = { name: '', phone: '', password: '', vehicleType: 'Bike', vehicleNumber: '' };
+
+const statusOf = (a) => {
+  if (a.isBlocked) return { label: 'Blocked', cls: 'bg-red-50 border-red-100 text-red-700', dot: 'bg-red-500' };
+  if (a.status === 'On Delivery') return { label: 'On delivery', cls: 'bg-violet-50 border-violet-100 text-violet-700', dot: 'bg-violet-500' };
+  if (a.status === 'Available') return { label: 'Online', cls: 'bg-green-50 border-green-100 text-green-700', dot: 'bg-green-500' };
+  return { label: 'Offline', cls: 'bg-gray-50 border-gray-100 text-gray-500', dot: 'bg-gray-300' };
+};
+
+const Summary = ({ label, value, accent = 'text-gray-900' }) => (
+  <div className="bg-white p-5 rounded-3xl border border-gray-100/60 shadow-sm">
+    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">{label}</p>
+    <p className={`text-2xl font-bold tracking-tight ${accent}`}>{value}</p>
+  </div>
+);
 
 const SellerAgents = () => {
-  const { axios } = useAppContext();
+  const { axios, currency } = useAppContext();
   const [agents, setAgents] = useState([]);
-  const [filteredAgents, setFilteredAgents] = useState([]);
-  const [newAgent, setNewAgent] = useState({ name: '', phone: '', password: '' });
+  const [form, setForm] = useState(EMPTY);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, agentId: null, agentName: '' });
+  const [busyId, setBusyId] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, agent: null, kind: null });
 
-  const fetchAgents = async (isManualRefresh = false) => {
+  const fetchAgents = async (manual = false) => {
     try {
-      if (isManualRefresh) setRefreshing(true);
+      if (manual) setRefreshing(true);
       const { data } = await axios.get('/api/agents');
       if (data.success) {
         setAgents(data.agents);
-        setFilteredAgents(data.agents);
-        if (isManualRefresh) toast.success('Agent list refreshed');
+        if (manual) toast.success('Fleet refreshed');
       }
-    } catch (err) {
-      if (!isManualRefresh) toast.error("Failed to fetch agents");
+    } catch {
+      if (!manual) toast.error('Failed to fetch riders');
     } finally {
       setLoading(false);
-      if (isManualRefresh) setRefreshing(false);
+      if (manual) setRefreshing(false);
     }
   };
 
-  const addAgent = async () => {
-    if (!newAgent.name || !newAgent.phone) return toast.error("All fields required");
+  const act = async (id, request) => {
+    setBusyId(id);
     try {
-      const { data } = await axios.post('/api/agents/create', newAgent);
+      const { data } = await request();
+      if (data.success) toast.success(data.message);
+      await fetchAgents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Action failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const addAgent = async (e) => {
+    e.preventDefault();
+    try {
+      const { data } = await axios.post('/api/agents/create', form);
       if (data.success) {
-        toast.success("Agent added successfully");
-        setNewAgent({ name: '', phone: '', password: '' });
-        fetchAgents();
+        toast.success('Rider added. Share the phone number and password with them.');
+        setForm(EMPTY);
         setShowAddForm(false);
+        fetchAgents();
       }
-    } catch (err) {
-      toast.error("Failed to add agent");
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add rider');
     }
   };
 
-  const removeAgent = async (agentId) => {
-    try {
-      const { data } = await axios.delete(`/api/agents/${agentId}`);
-      if (data.success) {
-        toast.success("Agent removed successfully");
-        fetchAgents();
-        setConfirmModal({ isOpen: false, agentId: null, agentName: '' });
-      } else {
-        toast.error(data.message || "Failed to remove agent");
-      }
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || "Failed to remove agent";
-      toast.error(errorMessage);
-      setConfirmModal({ isOpen: false, agentId: null, agentName: '' });
-    }
+  const resetPassword = (agent) => {
+    const password = window.prompt(`New password for ${agent.name} (min 6 characters):`);
+    if (!password) return;
+    act(agent._id, () => axios.post(`/api/agents/${agent._id}/reset-password`, { password }));
+  };
+
+  const editVehicle = (agent) => {
+    const vehicleNumber = window.prompt(`Vehicle number for ${agent.name}:`, agent.vehicleNumber || '');
+    if (vehicleNumber === null) return;
+    act(agent._id, () => axios.patch(`/api/agents/${agent._id}`, { vehicleNumber }));
+  };
+
+  const onConfirm = () => {
+    const { agent, kind } = confirmModal;
+    setConfirmModal({ isOpen: false, agent: null, kind: null });
+    if (kind === 'delete') act(agent._id, () => axios.delete(`/api/agents/${agent._id}`));
+    if (kind === 'block') act(agent._id, () => axios.patch(`/api/agents/${agent._id}`, { isBlocked: !agent.isBlocked }));
+    if (kind === 'settle') act(agent._id, () => axios.post(`/api/agents/${agent._id}/settle-cash`));
   };
 
   useEffect(() => {
     fetchAgents();
-
-    // Poll for updates every 10 seconds
-    const interval = setInterval(() => {
-      fetchAgents(false); // Silent refresh
-    }, 10000);
-
+    const interval = setInterval(() => fetchAgents(false), 10000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
+  const filtered = agents.filter((a) => {
     const term = searchTerm.toLowerCase();
-    setFilteredAgents(
-      agents.filter(agent =>
-        agent.name.toLowerCase().includes(term) ||
-        agent.phone.toLowerCase().includes(term)
-      )
-    );
-  }, [searchTerm, agents]);
+    return a.name.toLowerCase().includes(term) || a.phone.toLowerCase().includes(term) || (a.vehicleNumber || '').toLowerCase().includes(term);
+  });
+
+  const summary = useMemo(() => ({
+    online: agents.filter((a) => !a.isBlocked && a.status !== 'Inactive').length,
+    onDelivery: agents.filter((a) => a.status === 'On Delivery').length,
+    deliveriesToday: agents.reduce((s, a) => s + (a.stats?.todayDeliveries || 0), 0),
+    cashPending: agents.reduce((s, a) => s + (a.stats?.cashInHand || 0), 0),
+  }), [agents]);
+
+  const modalText = {
+    delete: { title: 'Delete rider', msg: (a) => `Permanently delete ${a.name}? Their delivery history stays on orders.`, btn: 'Delete' },
+    block: { title: 'Change access', msg: (a) => a.isBlocked ? `Allow ${a.name} to log in and take orders again?` : `Block ${a.name}? They will be logged out and can't take orders.`, btn: 'Confirm' },
+    settle: { title: 'Settle cash', msg: (a) => `Confirm you received ${currency}${a.stats?.cashInHand} in cash from ${a.name} for ${a.stats?.cashOrders} order(s)?`, btn: 'Cash received' },
+  };
 
   if (loading) return (
     <div className="flex justify-center items-center h-[60vh]">
@@ -91,207 +127,157 @@ const SellerAgents = () => {
     </div>
   );
 
+  const field = 'w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 focus:border-green-500/40 outline-none font-semibold text-gray-900 placeholder:text-gray-300';
+
   return (
-    <div className="p-8 bg-[#fcfcfc] min-h-screen no-scrollbar overflow-y-auto">
+    <div className="p-4 md:p-8 bg-[#fcfcfc] min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight tracking-[-0.04em]">Fleet Logistics</h1>
-            <p className="text-gray-400 font-semibold mt-1 text-sm">Monitor and manage your active delivery network.</p>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-[-0.04em]">Delivery Fleet</h1>
+            <p className="text-gray-400 font-semibold mt-1 text-sm">Riders, live status, workload and cash settlement.</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <button
               onClick={() => fetchAgents(true)}
               disabled={refreshing}
-              className="bg-white text-gray-700 px-6 py-3.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-sm hover:shadow-md transition-all flex items-center gap-2 border border-gray-100 disabled:opacity-50 active:scale-95"
+              className="bg-white text-gray-700 px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-sm flex items-center gap-2 border border-gray-100 disabled:opacity-50"
             >
-              <img
-                src={assets.refresh_icon}
-                className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
-                alt=""
-              />
-              {refreshing ? 'Syncing...' : 'Sync Fleet'}
+              <img src={assets.refresh_icon} className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} alt="" />
+              {refreshing ? 'Syncing...' : 'Sync'}
             </button>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className={`${showAddForm ? 'bg-gray-900' : 'bg-green-600'} text-white px-8 py-3.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg ${showAddForm ? 'shadow-gray-900/10' : 'shadow-green-500/20'} transition-all flex items-center gap-3 active:scale-95`}
+              className={`${showAddForm ? 'bg-gray-900' : 'bg-green-600'} text-white px-6 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2`}
             >
-              {showAddForm ? (
-                <>
-                  <span className="text-lg">✕</span>
-                  Abort Registration
-                </>
-              ) : (
-                <>
-                  <img src={assets.add_icon} className="w-4 h-4 brightness-0 invert" alt="" />
-                  Deploy New Agent
-                </>
-              )}
+              {showAddForm ? '✕ Cancel' : '+ Add Rider'}
             </button>
           </div>
         </div>
 
-        {/* Info & Control Hub */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
-          <div className="bg-white p-6 rounded-3xl border border-gray-100/60 shadow-sm flex items-center justify-between group hover:border-green-100 transition-colors">
-            <div>
-              <p className="text-[10px] text-gray-300 uppercase font-bold tracking-widest mb-1">Total Strength</p>
-              <p className="text-3xl font-bold text-gray-900 tracking-tight">{agents.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 group-hover:bg-green-600 group-hover:text-white transition-all">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-            </div>
-          </div>
-
-          <div className="lg:col-span-3">
-            <div className="relative group">
-              <img src={assets.search_icon} className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 opacity-20 group-focus-within:opacity-50 transition-opacity" alt="" />
-              <input
-                type="text"
-                placeholder="Find agents by name, ID or mobile terminal..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-16 pr-8 py-6 rounded-[1.5rem] border border-gray-100/60 bg-white focus:outline-none focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 transition-all font-semibold text-gray-900 placeholder:text-gray-300 text-sm shadow-sm"
-              />
-            </div>
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Summary label="Online now" value={`${summary.online} / ${agents.length}`} accent="text-green-700" />
+          <Summary label="On delivery" value={summary.onDelivery} accent="text-violet-700" />
+          <Summary label="Delivered today" value={summary.deliveriesToday} />
+          <Summary label="Cash with riders" value={`${currency}${summary.cashPending}`} accent={summary.cashPending > 0 ? 'text-orange-600' : 'text-gray-900'} />
         </div>
 
-        {/* Add Agent Form */}
-        {showAddForm && (
-          <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-xl mb-12 animate-in fade-in slide-in-from-top-6 duration-500">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 uppercase tracking-tight">Agent Registration</h2>
-                <p className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest mt-0.5">Initialize new delivery credential</p>
-              </div>
-            </div>
+        <div className="relative mb-8">
+          <img src={assets.search_icon} className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" alt="" />
+          <input
+            type="text"
+            placeholder="Search by name, phone or vehicle number"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-6 py-4 rounded-2xl border border-gray-100 bg-white focus:outline-none focus:border-green-500/40 font-semibold text-gray-900 placeholder:text-gray-300 text-sm shadow-sm"
+          />
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="space-y-2">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pl-1">Full Designation</label>
-                <input
-                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-6 py-5 focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 outline-none font-semibold text-gray-900 transition-all placeholder:text-gray-300"
-                  type="text"
-                  placeholder="e.g. Marcus Aurelius"
-                  value={newAgent.name}
-                  onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pl-1">Mobile Terminal</label>
-                <input
-                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-6 py-5 focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 outline-none font-semibold text-gray-900 transition-all placeholder:text-gray-300"
-                  type="text"
-                  placeholder="+91 00000 00000"
-                  value={newAgent.phone}
-                  onChange={(e) => setNewAgent({ ...newAgent, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pl-1">Access Cipher</label>
-                <input
-                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-6 py-5 focus:ring-8 focus:ring-green-500/5 focus:border-green-500/20 outline-none font-semibold text-gray-900 transition-all placeholder:text-gray-300"
-                  type="password"
-                  placeholder="Create secure key"
-                  value={newAgent.password}
-                  onChange={(e) => setNewAgent({ ...newAgent, password: e.target.value })}
-                />
+        {showAddForm && (
+          <form onSubmit={addAgent} className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-xl mb-10">
+            <h2 className="text-lg font-bold text-gray-900 mb-6">New delivery partner</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Full name</span>
+                <input required className={field} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Ravi Kumar" />
+              </label>
+              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Phone (login ID)</span>
+                <input required inputMode="tel" className={field} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="10-digit mobile" />
+              </label>
+              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Temporary password</span>
+                <input required minLength={6} type="text" className={field} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 6 characters" />
+              </label>
+              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Vehicle</span>
+                <select className={field} value={form.vehicleType} onChange={(e) => setForm({ ...form, vehicleType: e.target.value })}>
+                  {VEHICLES.map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </label>
+              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Vehicle number</span>
+                <input className={field} value={form.vehicleNumber} onChange={(e) => setForm({ ...form, vehicleNumber: e.target.value.toUpperCase() })} placeholder="e.g. DL 01 AB 1234" />
+              </label>
+              <div className="flex items-end">
+                <button className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-green-500/20 hover:bg-green-700 transition">Create rider</button>
               </div>
             </div>
-            <div className="mt-10 flex justify-end">
-              <button
-                className="bg-green-600 text-white px-12 py-5 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-green-500/20 hover:shadow-2xl hover:bg-green-700 transition-all active:scale-95"
-                onClick={addAgent}
-              >
-                Launch Protocol
-              </button>
-            </div>
-          </div>
+          </form>
         )}
 
-        {/* Agent Grid */}
-        {filteredAgents.length === 0 ? (
-          <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-gray-100 mt-4">
-            <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6 text-gray-200">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-            </div>
-            <h3 className="text-xl font-bold text-gray-400 uppercase tracking-widest">No Active Personnel</h3>
-            <p className="text-gray-300 font-semibold mt-2">Adjust search parameters or initialize new agent deployment.</p>
+        {filtered.length === 0 ? (
+          <div className="text-center py-24 bg-white rounded-[2.5rem] border-2 border-dashed border-gray-100">
+            <h3 className="text-lg font-bold text-gray-400 uppercase tracking-widest">No riders found</h3>
+            <p className="text-gray-300 font-semibold mt-2">Add your first delivery partner to start dispatching.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {filteredAgents.map((agent) => (
-              <div key={agent._id} className="group bg-white rounded-[2.5rem] border border-gray-100/60 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden relative flex flex-col pt-0">
-                {/* Header Decoration */}
-                <div className={`h-24 transition-all duration-500 ${agent.status === 'Available' ? 'bg-gradient-to-br from-green-50/50 to-emerald-50/50' : 'bg-gray-50/50'}`}></div>
-
-                <div className="px-8 pb-8 relative flex flex-col items-center text-center -mt-12">
-                  {/* Avatar Container */}
-                  <div className="relative mb-6">
-                    <div className="w-24 h-24 bg-white rounded-[2rem] p-1.5 shadow-xl border border-gray-100 group-hover:scale-110 transition-transform duration-500">
-                      <div className={`w-full h-full rounded-[1.5rem] flex items-center justify-center text-2xl font-bold uppercase text-white shadow-inner ${agent.status === 'Available' ? 'bg-green-600' : 'bg-gray-400'}`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filtered.map((agent) => {
+              const st = statusOf(agent);
+              const s = agent.stats || {};
+              const busy = busyId === agent._id;
+              return (
+                <div key={agent._id} className="bg-white rounded-[2rem] border border-gray-100/60 shadow-sm hover:shadow-xl transition-all p-6 flex flex-col gap-5">
+                  <div className="flex items-start gap-4">
+                    <div className="relative">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold uppercase text-white ${agent.isBlocked ? 'bg-red-400' : agent.status === 'Inactive' ? 'bg-gray-400' : 'bg-green-600'}`}>
                         {agent.name.slice(0, 2)}
                       </div>
+                      <span className={`absolute -right-1 -bottom-1 w-4 h-4 rounded-full border-2 border-white ${st.dot}`} />
                     </div>
-                    {/* Pulsing Status Dot */}
-                    <div className={`absolute -right-1 -bottom-1 w-6 h-6 rounded-full border-4 border-white shadow-md ${agent.status === 'Available' ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-gray-900 truncate">{agent.name}</h3>
+                      <p className="text-xs font-semibold text-gray-400">{agent.phone}</p>
+                      <p className="text-xs font-semibold text-gray-500 mt-0.5">
+                        {agent.vehicleType}{agent.vehicleNumber ? ` · ${agent.vehicleNumber}` : ''}
+                        <button onClick={() => editVehicle(agent)} className="ml-2 text-green-700 hover:underline">edit</button>
+                      </p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${st.cls}`}>{st.label}</span>
                   </div>
 
-                  <button
-                    onClick={() => setConfirmModal({
-                      isOpen: true,
-                      agentId: agent._id,
-                      agentName: agent.name
-                    })}
-                    className="absolute top-4 right-0 text-gray-300 hover:text-red-600 transition-all p-3 hover:bg-red-50 rounded-2xl opacity-0 group-hover:opacity-100 z-10"
-                    title="Terminate Access"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-
-                  <div className="w-full">
-                    <h3 className="text-xl font-bold text-gray-900 truncate tracking-tight">{agent.name}</h3>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em] mt-1 group-hover:text-green-600 transition-colors">{agent.phone}</p>
-
-                    <div className="mt-6 flex justify-center">
-                      <span className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${agent.status === 'Available'
-                        ? 'bg-green-50 border-green-100 text-green-700'
-                        : 'bg-gray-50 border-gray-100 text-gray-500'
-                        }`}>
-                        {agent.status === 'Available' ? 'Operational' : 'Off-Duty'}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 mt-8">
-                      <a
-                        href={`tel:${agent.phone}`}
-                        className="flex items-center justify-center gap-3 py-4 bg-[#fcfcfc] border border-gray-100 rounded-2xl text-[10px] font-semibold text-gray-900 uppercase tracking-widest hover:bg-white hover:border-green-200 hover:shadow-lg hover:shadow-green-500/5 transition-all active:scale-95 group/call"
-                      >
-                        <svg className="w-4 h-4 text-gray-300 group-hover/call:text-green-600 transition-colors" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                        Initiate Voice Call
-                      </a>
-                    </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-gray-50 rounded-xl py-2"><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Active</p><p className="font-bold text-gray-900">{s.activeOrders ?? 0}</p></div>
+                    <div className="bg-gray-50 rounded-xl py-2"><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Today</p><p className="font-bold text-gray-900">{s.todayDeliveries ?? 0}</p></div>
+                    <div className={`rounded-xl py-2 ${s.cashInHand > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Cash held</p><p className={`font-bold ${s.cashInHand > 0 ? 'text-orange-600' : 'text-gray-900'}`}>{currency}{s.cashInHand ?? 0}</p></div>
                   </div>
+
+                  <p className="text-[11px] text-gray-400 font-semibold -mt-2">
+                    Last active {agent.lastSeenAt ? timeAgo(agent.lastSeenAt) : 'never'} · {s.totalDeliveries ?? 0} lifetime deliveries
+                    {agent.currentLocation?.lat && (
+                      <> · <a className="text-blue-600 hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${agent.currentLocation.lat},${agent.currentLocation.lng}`}>location</a></>
+                    )}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 mt-auto">
+                    <a href={`tel:${agent.phone}`} className="py-2.5 text-center rounded-xl border border-gray-100 text-xs font-bold text-gray-700 hover:border-green-200">Call</a>
+                    {s.cashInHand > 0 ? (
+                      <button disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'settle' })} className="py-2.5 rounded-xl bg-orange-500 text-white text-xs font-bold disabled:opacity-50">Settle {currency}{s.cashInHand}</button>
+                    ) : (
+                      <button disabled={busy} onClick={() => resetPassword(agent)} className="py-2.5 rounded-xl border border-gray-100 text-xs font-bold text-gray-700 hover:border-gray-300 disabled:opacity-50">Reset password</button>
+                    )}
+                    <button disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'block' })} className={`py-2.5 rounded-xl text-xs font-bold disabled:opacity-50 ${agent.isBlocked ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-600'}`}>
+                      {agent.isBlocked ? 'Unblock' : 'Block'}
+                    </button>
+                    <button disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'delete' })} className="py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold disabled:opacity-50">Delete</button>
+                  </div>
+                  {s.cashInHand > 0 && (
+                    <button disabled={busy} onClick={() => resetPassword(agent)} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 -mt-2">Reset password</button>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        <ConfirmModal
-          isOpen={confirmModal.isOpen}
-          onClose={() => setConfirmModal({ isOpen: false, agentId: null, agentName: '' })}
-          onConfirm={() => removeAgent(confirmModal.agentId)}
-          title="Revoke Permission"
-          message={`Confirm termination of logistics credentials for ${confirmModal.agentName}?`}
-          confirmText="Terminate Access"
-          cancelText="Retain Access"
-          type="danger"
-        />
+        {confirmModal.agent && (
+          <ConfirmModal
+            isOpen={confirmModal.isOpen}
+            onClose={() => setConfirmModal({ isOpen: false, agent: null, kind: null })}
+            onConfirm={onConfirm}
+            title={modalText[confirmModal.kind].title}
+            message={modalText[confirmModal.kind].msg(confirmModal.agent)}
+            confirmText={modalText[confirmModal.kind].btn}
+            cancelText="Cancel"
+            type={confirmModal.kind === 'settle' ? 'success' : 'danger'}
+          />
+        )}
       </div>
     </div>
   );

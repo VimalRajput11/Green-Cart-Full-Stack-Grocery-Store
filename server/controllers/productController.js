@@ -19,10 +19,22 @@ const uploadToCloudinary = (buffer) => {
 };
 
 
+// Reject impossible prices before they reach customers
+const validatePrices = (data) => {
+    const hasPrice = data.price !== undefined;
+    const hasOffer = data.offerPrice !== undefined;
+    const price = Number(data.price);
+    const offer = Number(data.offerPrice);
+    if (hasPrice && (!Number.isFinite(price) || price < 0)) throw new Error('Price must be 0 or more');
+    if (hasOffer && (!Number.isFinite(offer) || offer < 0)) throw new Error('Offer price must be 0 or more');
+    if (hasPrice && hasOffer && offer > price) throw new Error('Offer price cannot be higher than the price');
+};
+
 // Add Product : /api/product/add
 export const addProduct = async (req, res) => {
     try {
         let productData = JSON.parse(req.body.productData)
+        validatePrices(productData);
 
         const images = req.files;
 
@@ -68,13 +80,14 @@ export const productById = async (req, res) => {
 export const updateProduct = async (req, res) => {
     try {
         const { id, ...updateData } = req.body;
+        validatePrices(updateData);
 
         if (typeof updateData.stock !== 'undefined') {
             updateData.stock = Number(updateData.stock);
             updateData.inStock = updateData.stock > 0;
         }
 
-        await Product.findByIdAndUpdate(id, updateData);
+        await Product.findByIdAndUpdate(id, updateData, { runValidators: true });
         res.json({ success: true, message: 'Product Updated Successfully' })
     } catch (error) {
         console.log(error.message);
@@ -95,7 +108,7 @@ export const changeStock = async (req, res) => {
             updateData.inStock = Number(stock) > 0;
         }
 
-        await Product.findByIdAndUpdate(id, updateData);
+        await Product.findByIdAndUpdate(id, updateData, { runValidators: true });
         res.json({ success: true, message: 'Stock Status Updated' })
     } catch (error) {
         console.log(error.message);

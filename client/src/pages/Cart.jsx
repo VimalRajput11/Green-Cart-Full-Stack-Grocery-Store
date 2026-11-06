@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAppContext } from '../context/AppContext';
 import { assets } from "../assets/assets";
 import toast from "react-hot-toast";
+import { DELIVERY_ETA } from "../utils/orderStatus";
 
 const Cart = () => {
     const {
@@ -98,7 +99,7 @@ const Cart = () => {
                                 navigate("/my-orders");
                             } else toast.error("Payment verification failed.");
                         } catch (error) {
-                            toast.error("Error during payment verification.");
+                            toast.error(error.response?.data?.message || "Error during payment verification.");
                         }
                     },
                     prefill: {
@@ -115,7 +116,7 @@ const Cart = () => {
                 rzp.open();
             }
         } catch (error) {
-            toast.error("Order failed: " + error.message);
+            toast.error(error.response?.data?.message || ("Order failed: " + error.message));
         }
     };
 
@@ -155,7 +156,7 @@ const Cart = () => {
             {/* Page Title */}
             <div className="mb-10 text-center md:text-left">
                 <h1 className="text-3xl md:text-4xl font-bold text-gray-800 font-serif">Your Shopping Cart</h1>
-                <p className="text-gray-500 mt-2">You have {getCartCount()} items in your cart</p>
+                <p className="text-gray-500 mt-2">{getCartCount()} items · Delivery in {DELIVERY_ETA}</p>
             </div>
 
             {cartArray.length === 0 ? (
@@ -319,11 +320,11 @@ const Cart = () => {
                                     <span>{currency}{getCartAmount()}</span>
                                 </div>
                                 <div className="flex justify-between text-gray-500 text-sm">
-                                    <span>Shipping</span>
+                                    <span>Delivery</span>
                                     <span className="text-green-600 font-medium">Free</span>
                                 </div>
                                 <div className="flex justify-between text-gray-500 text-sm">
-                                    <span>Tax (2%)</span>
+                                    <span>Handling fee (2%)</span>
                                     <span>{currency}{(getCartAmount() * 0.02).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-4 border-t border-gray-100">

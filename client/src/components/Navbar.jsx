@@ -1,43 +1,23 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { assets } from '../assets/assets'
 import { useAppContext } from '../context/AppContext'
 import toast from 'react-hot-toast'
+import { DELIVERY_ETA } from '../utils/orderStatus'
+
+const SEARCH_HINTS = ['milk', 'bread', 'eggs', 'fruits', 'atta', 'chips', 'paneer'];
 
 const Navbar = () => {
-  const [open, setOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [hint, setHint] = useState(0);
   const location = useLocation();
   const {
-    user,
-    setUser,
-    setShowUserLogin,
-    navigate,
-    setSearchQuery,
-    searchQuery,
-    getCartCount,
-    axios
+    user, setUser, setShowUserLogin, navigate, setSearchQuery, searchQuery,
+    getCartCount, getCartAmount, currency, axios,
   } = useAppContext();
+  const menuRef = useRef(null);
 
-  const profileMenuRef = useRef(null);
-
-  const scrollToContact = () => {
-    if (location.pathname !== '/') {
-      navigate('/');
-      setTimeout(() => {
-        const element = document.getElementById('contact');
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
-    } else {
-      const element = document.getElementById('contact');
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-    setOpen(false);
-  }
+  const cartCount = getCartCount();
 
   const logout = async () => {
     try {
@@ -46,121 +26,112 @@ const Navbar = () => {
         toast.success(data.message);
         setUser(null);
         navigate('/');
-      } else {
-        toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.message);
     }
+    setMenuOpen(false);
+  };
+
+  const goContact = () => {
+    setMenuOpen(false);
+    const scroll = () => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+    if (location.pathname !== '/') { navigate('/'); setTimeout(scroll, 150); } else scroll();
   };
 
   useEffect(() => {
-    if (searchQuery.length > 0) {
-      navigate('/products');
-    }
+    if (searchQuery.length > 0 && location.pathname !== '/products') navigate('/products');
   }, [searchQuery]);
 
-  // Close profile menu if clicking outside
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
-        setProfileMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    const t = setInterval(() => setHint((h) => (h + 1) % SEARCH_HINTS.length), 2500);
+    return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const searchBox = (
+    <label className="flex items-center gap-3 bg-gray-50 border border-gray-200 focus-within:border-green-600 focus-within:bg-white rounded-xl px-4 py-2.5 w-full transition">
+      <img src={assets.search_icon} alt="" className="w-4 h-4 opacity-60" />
+      <input
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full bg-transparent outline-none text-sm placeholder-gray-400"
+        type="search"
+        placeholder={`Search "${SEARCH_HINTS[hint]}"`}
+        aria-label="Search products"
+      />
+      {searchQuery && (
+        <button type="button" onClick={() => setSearchQuery('')} className="text-gray-400 text-lg leading-none" aria-label="Clear search">×</button>
+      )}
+    </label>
+  );
+
   return (
-    <nav className="flex items-center justify-between px-6 md:px-16 lg:px-24 xl:px-32 py-4 border-b border-gray-300 bg-white relative transition-all">
+    <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
+      <div className="px-4 md:px-16 lg:px-24 xl:px-32 py-3 flex items-center gap-4 md:gap-8">
+        <NavLink to="/" className="shrink-0" aria-label="GreenCart home">
+          <img className="h-8 md:h-9" src={assets.logo} alt="GreenCart" />
+        </NavLink>
 
-      <NavLink to='/' onClick={() => setOpen(false)}>
-        <img className="h-9" src={assets.logo} alt='logo' />
-      </NavLink>
-
-      {/* Desktop Menu */}
-      <div className="hidden sm:flex items-center gap-8">
-        <NavLink to='/'>Home</NavLink>
-        <NavLink to='/products'>All Products</NavLink>
-        <button onClick={scrollToContact} className='text-gray-700 hover:text-black'>Contact</button>
-
-        <div className="hidden lg:flex items-center text-sm gap-2 border border-gray-300 px-3 rounded-full">
-          <input
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="py-1.5 w-full bg-transparent outline-none placeholder-gray-500"
-            type="text"
-            placeholder="Search products"
-          />
-          <img src={assets.search_icon} alt='search' className='w-4 h-4' />
+        <div className="hidden sm:block shrink-0 border-l border-gray-200 pl-4 md:pl-8">
+          <p className="text-sm font-extrabold text-gray-900 leading-tight">Delivery in {DELIVERY_ETA}</p>
+          <p className="text-xs text-gray-500 truncate max-w-[180px]">{user ? `Hi, ${user.name.split(' ')[0]}` : 'Fresh groceries at your door'}</p>
         </div>
 
-        <div onClick={() => navigate('/cart')} className="relative cursor-pointer">
-          <img src={assets.nav_cart_icon} alt='cart' className='w-6 opacity-80' />
-          <button className="absolute -top-2 -right-3 text-xs text-white bg-primary w-[18px] h-[18px] rounded-full">{getCartCount()}</button>
-        </div>
+        <div className="hidden md:block flex-1">{searchBox}</div>
 
-        {!user ? (
-          <button onClick={() => setShowUserLogin(true)} className="cursor-pointer px-8 py-2 bg-primary hover:bg-primary-dull transition text-white rounded-full">
-            Login
-          </button>
-        ) : (
-          <div className='relative' ref={profileMenuRef}>
-            <img
-              src={assets.profile_icon}
-              alt='profile'
-              className='w-10 cursor-pointer'
-              onClick={() => setProfileMenuOpen((prev) => !prev)}
-            />
-            {profileMenuOpen && (
-              <ul className='absolute top-10 right-0 bg-white shadow border border-gray-200 py-2.5 w-30 rounded-md text-sm z-40'>
-                <li onClick={() => { setProfileMenuOpen(false); navigate('my-orders'); }} className='p-1.5 pl-3 hover:bg-primary/10 cursor-pointer'>My Orders</li>
-                <li onClick={logout} className='p-1.5 pl-3 hover:bg-primary/10 cursor-pointer'>Logout</li>
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className='flex items-center gap-6 sm:hidden'>
-        <div onClick={() => navigate('/cart')} className="relative cursor-pointer">
-          <img src={assets.nav_cart_icon} alt='cart' className='w-6 opacity-80' />
-          <button className="absolute -top-2 -right-3 text-xs text-white bg-primary w-[18px] h-[18px] rounded-full">{getCartCount()}</button>
-        </div>
-        <button onClick={() => open ? setOpen(false) : setOpen(true)} aria-label="Menu" className=" cursor-pointer">
-          {/* Menu Icon SVG */}
-          <img src={assets.menu_icon} alt='menu' />
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {open && (
-        <div className="absolute top-[60px] left-0 w-full bg-white shadow-md py-4 px-5 z-50 flex flex-col items-start gap-4 text-sm md:hidden">
-          <NavLink to='/' onClick={() => setOpen(false)}>Home</NavLink>
-          <NavLink to='/products' onClick={() => setOpen(false)}>All Products</NavLink>
-          {user && <NavLink to='/my-orders' onClick={() => setOpen(false)}>My Orders</NavLink>}
-          <button onClick={scrollToContact} className='text-left'>Contact</button>
-
+        <div className="ml-auto flex items-center gap-3 md:gap-5">
           {!user ? (
-            <button
-              onClick={() => {
-                setOpen(false);
-                setShowUserLogin(true);
-              }}
-              className="cursor-pointer px-6 py-2 mt-2 bg-primary hover:bg-primary-dull transition text-white rounded-full text-sm"
-            >
+            <button onClick={() => setShowUserLogin(true)} className="text-sm font-semibold text-gray-800 hover:text-green-700">
               Login
             </button>
           ) : (
-            <button onClick={logout} className="cursor-pointer px-6 py-2 mt-2 bg-primary hover:bg-primary-dull transition text-white rounded-full text-sm">
-              Logout
-            </button>
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-1 text-sm font-semibold text-gray-800" aria-expanded={menuOpen}>
+                Account
+                <svg className={`w-4 h-4 transition ${menuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-9 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 text-sm z-50">
+                  <div className="px-4 py-2 border-b border-gray-100 mb-1">
+                    <p className="font-semibold text-gray-900 truncate">{user.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  </div>
+                  <button onClick={() => { setMenuOpen(false); navigate('/my-orders'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">My orders</button>
+                  <button onClick={() => { setMenuOpen(false); navigate('/add-address'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Add address</button>
+                  <button onClick={() => { setMenuOpen(false); navigate('/recipe-ai'); }} className="w-full text-left px-4 py-2 hover:bg-gray-50">Recipe AI</button>
+                  <button onClick={goContact} className="w-full text-left px-4 py-2 hover:bg-gray-50">Help & contact</button>
+                  <button onClick={logout} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600">Log out</button>
+                </div>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-    </nav>
+          <button
+            onClick={() => navigate('/cart')}
+            className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white rounded-xl px-3 md:px-4 py-2.5 transition"
+            aria-label={`Cart, ${cartCount} items`}
+          >
+            <img src={assets.nav_cart_icon} alt="" className="w-5 brightness-0 invert" />
+            {cartCount > 0 ? (
+              <span className="text-left leading-tight">
+                <span className="block text-[11px] font-semibold">{cartCount} item{cartCount > 1 ? 's' : ''}</span>
+                <span className="block text-xs font-bold">{currency}{getCartAmount()}</span>
+              </span>
+            ) : (
+              <span className="hidden sm:inline text-sm font-bold">My Cart</span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="md:hidden px-4 pb-3">{searchBox}</div>
+    </header>
   )
 }
 

@@ -102,6 +102,9 @@ export const assets = {
   add_address_iamge,
   box_icon,
   ai_chef_icon,
+  fresh_fruits_image,
+  dairy_product_image,
+  bottles_image,
 };
 
 export const categories = [

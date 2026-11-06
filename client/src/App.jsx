@@ -14,6 +14,7 @@ import Cart from './pages/Cart.jsx'
 import AddAddress from './pages/AddAddress.jsx'
 import MyOrders from './pages/MyOrders.jsx'
 import RecipeChatbot from './components/RecipeChatbot.jsx'
+import CartBar from './components/CartBar.jsx'
 import RecipeAI from './pages/RecipeAI.jsx'
 import NotFound from './pages/NotFound.jsx'
 
@@ -31,6 +32,7 @@ import AgentLogin from './pages/Agents/AgentLogin.jsx'
 import AgentLayout from './pages/Agents/AgentLayout.jsx'
 import DeliveryAgentPage from './pages/Agents/DeliveryAgentPage.jsx'
 import DeliveredOrders from './pages/Agents/DeliveredOrders.jsx'
+import AgentProfile from './pages/Agents/AgentProfile.jsx'
 
 const App = () => {
   const location = useLocation();
@@ -44,7 +46,7 @@ const App = () => {
       {showUserLogin && <Login />}
       <Toaster />
 
-      <div className={`${isSellerPath || isAgentPath ? '' : 'px-6 md:px-16 lg:px-24 xl:px-32'}`}>
+      <div className={`${isSellerPath || isAgentPath ? '' : 'px-4 md:px-16 lg:px-24 xl:px-32'}`}>
         <Routes>
           {/* Public User Routes */}
           <Route path="/" element={<Home />} />
@@ -71,6 +73,7 @@ const App = () => {
           <Route path="/agents" element={isAgent ? <AgentLayout /> : <AgentLogin />}>
             <Route index element={isAgent ? <DeliveryAgentPage /> : null} />
             <Route path="delivered" element={<DeliveredOrders />} />
+            <Route path="profile" element={<AgentProfile />} />
           </Route>
 
         </Routes>
@@ -78,6 +81,7 @@ const App = () => {
 
       {!isSellerPath && !isAgentPath && <Footer />}
       {!isSellerPath && !isAgentPath && <RecipeChatbot />}
+      {!isSellerPath && !isAgentPath && <CartBar />}
     </div>
   );
 };

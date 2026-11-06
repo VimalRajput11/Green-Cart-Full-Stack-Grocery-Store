@@ -31,6 +31,7 @@ const priceItems = async (items) => {
     if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Invalid quantity");
     const product = await Product.findById(item.product);
     if (!product) throw new Error("A product in your cart is no longer available");
+    if (!(product.offerPrice >= 0)) throw new Error(`${product.name} is temporarily unavailable`);
     if ((product.stock || 0) < quantity) {
       throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`);
     }
@@ -195,8 +196,12 @@ export const getUserOrders = async (req, res) => {
       // OTP only matters while the order is on its way
       if (!ACTIVE.includes(order.status)) delete order.deliveryOtp;
       // Share rider location only while they're carrying this order
-      if (order.assignedTo && ![STATUS.OUT, STATUS.ARRIVING, STATUS.REACHED].includes(order.status)) {
-        delete order.assignedTo.currentLocation;
+      // Populated riders are shared objects across orders, so copy before trimming
+      if (order.assignedTo) {
+        order.assignedTo = { ...order.assignedTo };
+        if (![STATUS.OUT, STATUS.ARRIVING, STATUS.REACHED].includes(order.status)) {
+          delete order.assignedTo.currentLocation;
+        }
       }
     }
 

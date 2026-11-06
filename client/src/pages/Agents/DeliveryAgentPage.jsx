@@ -1,430 +1,454 @@
-import React, { useState, useEffect } from "react";
-import toast from "react-hot-toast";
-import { assets } from "../../assets/assets";
-import { useAppContext } from "../../context/AppContext";
-import { useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useAppContext } from '../../context/AppContext';
+import { STATUS, STATUS_STYLE, IN_TRANSIT, shortId, mapsLink, timeAgo } from '../../utils/orderStatus';
 
-const DeliveryAgentPage = () => {
-  const { axios, user } = useAppContext();
-  const navigate = useNavigate();
+const POLL_MS = 15000;
 
-  const [agent, setAgent] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [paymentDropdowns, setPaymentDropdowns] = useState({});
-  const [loadingOrderIds, setLoadingOrderIds] = useState([]);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
-  const [refreshing, setRefreshing] = useState(false);
+const Stat = ({ label, value, accent }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-3">
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
+    <p className={`text-lg font-bold mt-0.5 ${accent || 'text-gray-900'}`}>{value}</p>
+  </div>
+);
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const res = await axios.get("/api/agents/is-auth");
-        if (res.data.success) {
-          const agentData = res.data.agent || {};
-          setAgent(agentData);
-          await fetchOrders(agentData._id);
-        } else {
-          toast.error("Authentication failed");
-          setAgent(null);
-        }
-      } catch (error) {
-        toast.error("Please login as agent");
-        setAgent(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
+const Pill = ({ status }) => (
+  <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ${STATUS_STYLE[status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+    {status}
+  </span>
+);
 
-  useEffect(() => {
-    if (!agent?._id) return;
+const ItemsList = ({ items }) => (
+  <ul className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+    {items.map((it, i) => (
+      <li key={i} className="flex items-center gap-3 px-3 py-2 bg-white">
+        <img src={it.product?.image?.[0]} alt="" className="w-9 h-9 object-contain bg-gray-50 rounded" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-800 truncate">{it.product?.name || 'Item'}</p>
+          {it.product?.weight && <p className="text-[11px] text-gray-400">{it.product.weight}</p>}
+        </div>
+        <span className="text-sm font-bold text-gray-700">× {it.quantity}</span>
+      </li>
+    ))}
+  </ul>
+);
 
-    const interval = setInterval(() => {
-      fetchOrders(agent._id);
-    }, 15000); // Polling every 15s
+// ---------------------------------------------------------------------------
 
-    return () => clearInterval(interval);
-  }, [agent]);
+const CompleteModal = ({ order, onClose, onDone }) => {
+  const { axios, currency } = useAppContext();
+  const [otp, setOtp] = useState('');
+  const [method, setMethod] = useState(order.isPaid ? null : 'cash');
+  const [paid, setPaid] = useState(order.isPaid);
+  const [busy, setBusy] = useState(false);
 
-  const fetchOrders = async (agentId, showToast = false) => {
-    setRefreshing(true);
+  const payByUpi = async () => {
+    setBusy(true);
     try {
-      setLoadingOrderIds([]); // Clear any loading states
-      const { data } = await axios.get("/api/agents/orders/visible");
-      if (data.success) {
-        // Filter orders
-        const visibleOrders = data.orders.filter(
-          (order) =>
-            (!order.assignedTo || order.assignedTo === agentId) &&
-            order.status !== "Delivered"
-        );
-        setOrders(visibleOrders);
-        if (showToast) toast.success('Orders refreshed!');
-      }
+      const { data } = await axios.post(`/api/agents/orders/${order._id}/upi`);
+      if (!data.success) throw new Error(data.message);
+      const rzp = new window.Razorpay({
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: data.order.amount,
+        currency: data.order.currency,
+        name: 'GreenCart',
+        description: `Order #${shortId(order._id)}`,
+        order_id: data.order.id,
+        prefill: { contact: order.address?.phone || '' },
+        theme: { color: '#16a34a' },
+        handler: async (response) => {
+          try {
+            const v = await axios.post(`/api/agents/orders/${order._id}/upi/verify`, response);
+            if (v.data.success) { setPaid(true); toast.success(v.data.message); }
+          } catch (e) {
+            toast.error(e.response?.data?.message || 'Payment verification failed');
+          }
+        },
+        modal: { ondismiss: () => setBusy(false) },
+      });
+      rzp.open();
     } catch (error) {
-      console.error(error);
-      if (showToast) toast.error('Failed to refresh orders');
+      toast.error(error.response?.data?.message || error.message || 'Could not start UPI payment');
     } finally {
-      setRefreshing(false);
+      setBusy(false);
     }
   };
 
-  const setOrderLoading = (orderId, isLoading) => {
-    setLoadingOrderIds((prev) => {
-      if (isLoading) return [...prev, orderId];
-      return prev.filter((id) => id !== orderId);
-    });
-  };
-
-  const acceptOrder = async (orderId) => {
-    setOrderLoading(orderId, true);
-    try {
-      const { data } = await axios.post("/api/agents/accept", { orderId });
-      if (data.success) {
-        toast.success("Order accepted 🚀");
-        await fetchOrders(agent._id);
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      toast.error("Accept failed");
-    } finally {
-      setOrderLoading(orderId, false);
-    }
-  };
-
-  const updateOrderStatus = async (orderId, newStatus) => {
-    setOrderLoading(orderId, true);
-    try {
-      const { data } = await axios.put(`/api/agents/status/${orderId}`, { status: newStatus });
-      if (data.success) {
-        toast.success(`Status updated: ${newStatus}`);
-        await fetchOrders(agent._id);
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      toast.error("Status update failed");
-    } finally {
-      setOrderLoading(orderId, false);
-    }
-  };
-
-  const toggleDropdown = (orderId) => {
-    setPaymentDropdowns((prev) => ({
-      ...prev,
-      [orderId]: !prev[orderId],
-    }));
-  };
-
-  const handlePaymentSelection = async (orderId, method) => {
-    setPaymentDropdowns((prev) => ({ ...prev, [orderId]: false }));
-
-    if (method === "cash") {
-      setOrderLoading(orderId, true);
-      try {
-        const { data } = await axios.put(`/api/agents/mark-paid/${orderId}`);
-        if (data.success) {
-          toast.success("Cash Collected 💵");
-          await fetchOrders(agent._id);
-        } else {
-          toast.error(data.message);
-        }
-      } catch (error) {
-        toast.error("Payment failed");
-      } finally {
-        setOrderLoading(orderId, false);
-      }
-    } else if (method === "online") {
-      // ... (Razorpay logic same as before, simplified for brevity here, assumed working)
-      const order = orders.find((o) => o._id === orderId);
-      if (!order) return toast.error("Order not found");
-
-      try {
-        const orderData = {
-          amount: order.amount * 100,
-          currency: "INR",
-          receipt: order._id,
-        };
-
-        const { data } = await axios.post("/api/agents/order/razorpay", orderData);
-        if (!data.success) return toast.error("Failed to create Razorpay order");
-
-        const { order: razorpayOrder, orderId: receiptId } = data;
-
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency,
-          name: "Green Cart Agent",
-          description: "Payment Collection",
-          order_id: razorpayOrder.id,
-          handler: async function (response) {
-            try {
-              const verifyRes = await axios.post("/api/agents/order/verify", {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                orderId: receiptId,
-              });
-
-              if (verifyRes.data.success) {
-                toast.success("Payment successful!");
-                await updateOrderStatus(receiptId, "Delivered");
-                await fetchOrders(agent._id);
-              } else {
-                toast.error("Payment verification failed.");
-              }
-            } catch (error) {
-              toast.error("Error during payment verification.");
-            }
-          },
-          prefill: {
-            name: "Customer",
-            contact: order.address?.phone || "",
-          },
-          theme: {
-            color: "#4fbf86",
-          },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      } catch (error) {
-        toast.error("Order failed: " + (error.message || error));
-      }
-    }
-  };
-
-  const handleChangePassword = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (otp.length !== 4) return toast.error('Enter the 4-digit OTP');
+    setBusy(true);
     try {
-      const { data } = await axios.post('/api/agents/change-password', passwordData);
-      if (data.success) {
-        toast.success('Password updated successfully!');
-        setShowPasswordModal(false);
-        setPasswordData({ oldPassword: '', newPassword: '' });
-      } else {
-        toast.error(data.message);
-      }
+      const { data } = await axios.post(`/api/agents/orders/${order._id}/complete`, {
+        otp, collectionMethod: paid ? undefined : method,
+      });
+      if (data.success) { toast.success('Delivered!'); onDone(); }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update password');
+      toast.error(error.response?.data?.message || 'Could not complete delivery');
+    } finally {
+      setBusy(false);
     }
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-400">Loading orders...</div>;
-  if (!agent) return <div className="p-10 text-center text-red-500">Access Denied</div>;
+  const needsCash = !paid && method === 'cash';
 
   return (
-    <div className="pb-20">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Current Tasks
-          <span className="ml-2 text-sm font-normal text-white bg-primary px-2 py-0.5 rounded-full">{orders.length}</span>
-        </h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowPasswordModal(true)}
-            className="text-gray-500 p-2 hover:bg-gray-100 rounded-full transition"
-            title="Change Password"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-          </button>
-          <button
-            onClick={() => fetchOrders(agent._id, true)}
-            className="text-primary p-2 hover:bg-primary/10 rounded-full transition"
-            title="Refresh Orders"
-            disabled={refreshing}
-          >
-            <svg
-              className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-          </button>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
+      <form onSubmit={submit} className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">Complete delivery</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 text-xl leading-none px-2" aria-label="Close">×</button>
         </div>
-      </div>
 
-      {
-        showPasswordModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Change Password</h3>
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-gray-500">Current Password</label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition"
-                    value={passwordData.oldPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500">New Password</label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition"
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-3 justify-end mt-6">
-                  <button type="button" onClick={() => setShowPasswordModal(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-green-600 transition">Update</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )
-      }
-
-      {
-        orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="bg-gray-50 p-6 rounded-full mb-4">
-              <img src={assets.box_icon} className="w-12 h-12 opacity-30 grayscale" alt="" />
-            </div>
-            <p className="text-gray-500 font-medium">No active tasks nearby.</p>
-            <p className="text-sm text-gray-400">Enjoy your break! ☕</p>
+        {/* Payment */}
+        {paid ? (
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-3 text-sm font-semibold text-green-800">
+            ✓ Payment received{order.paymentType === 'Online' ? ' (prepaid online)' : ''}
           </div>
         ) : (
-          <div className="grid gap-6">
-            {orders.map((order) => {
-              const isAssignedToMe = order.assignedTo === agent._id;
-              const isLoading = loadingOrderIds.includes(order._id);
-
-              return (
-                <div
-                  key={order._id}
-                  className={`relative bg-white rounded-2xl shadow-sm border overflow-hidden transition-all duration-300 hover:shadow-md
-                ${isAssignedToMe ? 'border-primary/30 ring-1 ring-primary/10' : 'border-gray-200'}
-              `}
+          <div className="space-y-2">
+            <p className="text-sm text-gray-500">Collect from customer</p>
+            <p className="text-3xl font-bold text-gray-900">{currency}{order.amount}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {['cash', 'upi'].map((m) => (
+                <button
+                  type="button"
+                  key={m}
+                  onClick={() => setMethod(m)}
+                  className={`py-2.5 rounded-xl border-2 text-sm font-bold ${method === m ? 'border-green-600 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500'}`}
                 >
-                  {/* Status Banner */}
-                  <div className={`px-4 py-2 text-xs font-bold uppercase tracking-wide flex justify-between items-center
-                ${isAssignedToMe ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-600'}
-              `}>
-                    <span>{isAssignedToMe ? '● Active Task' : '○ New Request'}</span>
-                    <span>Order #{order._id.slice(-4)}</span>
-                  </div>
-
-                  <div className="p-5">
-                    {/* Customer Info */}
-                    <div className="flex gap-4 mb-4">
-                      <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center shrink-0">
-                        <img src={assets.profile_icon} className="w-6 opacity-60" alt="" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-800 text-lg">{order.address?.firstName} {order.address?.lastName}</h3>
-                        <p className="text-gray-500 text-sm leading-tight">{order.address?.street}, {order.address?.city}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <a href={`tel:${order.address?.phone}`} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 font-medium flex items-center gap-1">
-                            Call {order.address?.phone}
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-
-                    <hr className="border-gray-100 my-3" />
-
-                    {/* Order Info */}
-                    <div className="flex justify-between items-end mb-4">
-                      <div>
-                        <p className="text-xs text-gray-400 uppercase font-semibold">Order Details</p>
-                        <p className="text-sm text-gray-700 font-medium mt-1">{order.items.length} Items • ₹{order.amount}</p>
-                        <p className="text-xs text-gray-500">{order.paymentType} • {order.isPaid ? <span className="text-green-600 font-bold">PAID</span> : <span className="text-orange-500 font-bold">PENDING</span>}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400 capitalize">Current Status</p>
-                        <p className="text-sm font-bold text-gray-800">{order.status}</p>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="grid grid-cols-1 gap-2 mt-4">
-                      {!isAssignedToMe ? (
-                        <button
-                          onClick={() => acceptOrder(order._id)}
-                          disabled={isLoading}
-                          className={`w-full py-3 rounded-xl font-bold text-white transition shadow-lg shadow-blue-200
-                                ${isLoading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700 active:scale-95'}
-                            `}
-                        >
-                          {isLoading ? 'Processing...' : 'Accept Order'}
-                        </button>
-                      ) : (
-                        <>
-                          {/* Status Progression */}
-                          {/* Status Progression */}
-                          {order.status === "Order Placed" && (
-                            <button onClick={() => updateOrderStatus(order._id, "Picked")} disabled={isLoading} className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl shadow-lg shadow-yellow-200 transition active:scale-95">
-                              {isLoading ? 'Updating...' : '📦 Mark as Picked'}
-                            </button>
-                          )}
-
-                          {order.status === "Picked" && (
-                            <button onClick={() => updateOrderStatus(order._id, "Out for Delivery")} disabled={isLoading} className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition active:scale-95">
-                              {isLoading ? 'Updating...' : '🚚 Out for Delivery'}
-                            </button>
-                          )}
-
-                          {order.status === "Out for Delivery" && (
-                            <button onClick={() => updateOrderStatus(order._id, "Arriving")} disabled={isLoading} className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition active:scale-95">
-                              {isLoading ? 'Updating...' : '📍 Arriving Soon'}
-                            </button>
-                          )}
-
-                          {order.status === "Arriving" && (
-                            <button onClick={() => updateOrderStatus(order._id, "Reached Location")} disabled={isLoading} className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl shadow-lg shadow-purple-200 transition active:scale-95">
-                              {isLoading ? 'Updating...' : '🏠 Reached Location'}
-                            </button>
-                          )}
-
-                          {order.status === "Reached Location" && (
-                            <button onClick={() => updateOrderStatus(order._id, "Delivered")} disabled={isLoading} className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition active:scale-95">
-                              {isLoading ? 'Updating...' : '✅ Mark as Delivered'}
-                            </button>
-                          )}
-
-                          {/* Payment Collection Logic - Only visible when reached location */}
-                          {!order.isPaid && order.paymentType === "COD" && order.status === 'Reached Location' && (
-                            <div className="relative mt-2">
-                              <button
-                                onClick={() => toggleDropdown(order._id)}
-                                className="w-full py-2.5 border-2 border-green-600 text-green-700 font-bold rounded-xl hover:bg-green-50 transition"
-                              >
-                                Collect Payment 💵
-                              </button>
-
-                              {paymentDropdowns[order._id] && (
-                                <div className="absolute bottom-full left-0 w-full mb-2 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-10 flex flex-col gap-1">
-                                  <p className="text-xs text-center text-gray-400 font-medium mb-1">Select Method</p>
-                                  <button onClick={() => handlePaymentSelection(order._id, 'cash')} className="py-2 hover:bg-gray-100 rounded-lg font-medium text-gray-700">Cash Received</button>
-                                  <button onClick={() => handlePaymentSelection(order._id, 'online')} className="py-2 hover:bg-gray-100 rounded-lg font-medium text-gray-700">Online QR</button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                  {m === 'cash' ? 'Cash' : 'UPI / Online'}
+                </button>
+              ))}
+            </div>
+            {method === 'upi' && (
+              <button type="button" onClick={payByUpi} disabled={busy} className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-60">
+                Open UPI payment
+              </button>
+            )}
           </div>
-        )
+        )}
+
+        {/* OTP */}
+        <div>
+          <label htmlFor="otp" className="text-sm text-gray-500">Delivery OTP from customer</label>
+          <input
+            id="otp"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={4}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+            className="mt-1 w-full text-center text-3xl tracking-[0.6em] font-bold border-2 border-gray-200 focus:border-green-600 rounded-2xl py-3 outline-none"
+            placeholder="••••"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">The customer sees this code in their GreenCart orders page.</p>
+        </div>
+
+        <button
+          type="submit"
+          disabled={busy || otp.length !== 4 || (!paid && method === 'upi')}
+          className="w-full py-3.5 rounded-2xl bg-green-600 text-white font-bold disabled:opacity-50"
+        >
+          {busy ? 'Please wait…' : needsCash ? `Cash collected · Mark delivered` : 'Mark delivered'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+const FailModal = ({ order, onClose, onDone }) => {
+  const { axios } = useAppContext();
+  const [reasons, setReasons] = useState([]);
+  const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    axios.get('/api/agents/fail-reasons').then(({ data }) => setReasons(data.reasons || [])).catch(() => { });
+  }, []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { data } = await axios.post(`/api/agents/orders/${order._id}/fail`, { reason, note });
+      if (data.success) { toast.success(data.message); onDone(); }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not update');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
+      <form onSubmit={submit} className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">Delivery failed?</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 text-xl leading-none px-2" aria-label="Close">×</button>
+        </div>
+        <p className="text-sm text-gray-500">Try calling the customer first. If you still can't deliver, choose a reason and return the parcel to the store.</p>
+        <div className="space-y-2">
+          {reasons.map((r) => (
+            <label key={r} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer text-sm ${reason === r ? 'border-orange-500 bg-orange-50' : 'border-gray-100'}`}>
+              <input type="radio" name="reason" checked={reason === r} onChange={() => setReason(r)} className="accent-orange-500" />
+              {r}
+            </label>
+          ))}
+        </div>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Add a note (optional)" className="w-full border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-orange-500" />
+        <button disabled={!reason || busy} className="w-full py-3.5 rounded-2xl bg-orange-500 text-white font-bold disabled:opacity-50">
+          {busy ? 'Please wait…' : 'Confirm failed delivery'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+
+const ACTIONS = {
+  [STATUS.PACKED]: { action: 'pickup', label: 'Confirm pickup from store', color: 'bg-indigo-600' },
+  [STATUS.PICKED]: { action: 'start', label: 'Start delivery', color: 'bg-violet-600' },
+  [STATUS.OUT]: { action: 'reached', label: "I've arrived at the location", color: 'bg-fuchsia-600' },
+  [STATUS.ARRIVING]: { action: 'reached', label: "I've arrived at the location", color: 'bg-fuchsia-600' },
+};
+
+const TaskCard = ({ order, busy, onAdvance, onComplete, onFail, onReturn }) => {
+  const { currency } = useAppContext();
+  const [showItems, setShowItems] = useState(order.status === STATUS.PACKED);
+  const a = order.address || {};
+  const next = ACTIONS[order.status];
+  const itemCount = order.items.reduce((n, i) => n + i.quantity, 0);
+
+  return (
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-4 pt-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-mono font-bold text-gray-900">#{shortId(order._id)}</span>
+          <Pill status={order.status} />
+        </div>
+        <span className="text-[11px] text-gray-400">{timeAgo(order.acceptedAt || order.createdAt)}</span>
+      </div>
+
+      <div className="p-4 space-y-3">
+        <div>
+          <p className="font-bold text-gray-900">{a.firstName} {a.lastName}</p>
+          <p className="text-sm text-gray-500 leading-snug">{a.street}, {a.city}{a.zipcode ? ` - ${a.zipcode}` : ''}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <a href={mapsLink(a)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-blue-50 text-blue-700 text-sm font-semibold">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+            Navigate
+          </a>
+          <a href={`tel:${a.phone}`} className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-50 text-green-700 text-sm font-semibold">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+            Call customer
+          </a>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <button onClick={() => setShowItems((s) => !s)} className="text-gray-600 font-medium underline-offset-2 hover:underline">
+            {itemCount} item{itemCount > 1 ? 's' : ''} {showItems ? '▴' : '▾'}
+          </button>
+          {order.isPaid ? (
+            <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-1 rounded">PREPAID</span>
+          ) : (
+            <span className="text-xs font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded">COLLECT {currency}{order.amount}</span>
+          )}
+        </div>
+        {showItems && <ItemsList items={order.items} />}
+
+        {/* Primary action */}
+        {order.status === STATUS.PLACED && (
+          <div className="py-3 rounded-2xl bg-amber-50 text-amber-800 text-sm font-semibold text-center">
+            Store is packing this order…
+          </div>
+        )}
+        {next && (
+          <button
+            disabled={busy}
+            onClick={() => onAdvance(order._id, next.action)}
+            className={`w-full py-3.5 rounded-2xl text-white font-bold ${next.color} disabled:opacity-60 active:scale-[0.99] transition`}
+          >
+            {busy ? 'Updating…' : next.label}
+          </button>
+        )}
+        {order.status === STATUS.REACHED && (
+          <button onClick={() => onComplete(order)} className="w-full py-3.5 rounded-2xl bg-green-600 text-white font-bold active:scale-[0.99] transition">
+            Complete delivery
+          </button>
+        )}
+
+        {/* Secondary */}
+        <div className="flex justify-center">
+          {[STATUS.PLACED, STATUS.PACKED].includes(order.status) && (
+            <button disabled={busy} onClick={() => onReturn(order._id)} className="text-xs font-semibold text-gray-400 hover:text-red-600">
+              Can't take this order? Return it
+            </button>
+          )}
+          {IN_TRANSIT.includes(order.status) && (
+            <button onClick={() => onFail(order)} className="text-xs font-semibold text-gray-400 hover:text-orange-600">
+              Unable to deliver?
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PoolCard = ({ order, busy, disabled, onAccept }) => {
+  const { currency } = useAppContext();
+  const a = order.address || {};
+  const itemCount = order.items.reduce((n, i) => n + i.quantity, 0);
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-gray-900 truncate">{a.street || 'Address'}, {a.city}</p>
+          <p className="text-xs text-gray-400 mt-0.5">#{shortId(order._id)} · {itemCount} items · {timeAgo(order.createdAt)}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="font-bold text-gray-900">{currency}{order.amount}</p>
+          <p className={`text-[10px] font-bold ${order.isPaid ? 'text-green-600' : 'text-orange-600'}`}>{order.isPaid ? 'PREPAID' : 'COD'}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <Pill status={order.status} />
+        <button
+          onClick={() => onAccept(order._id)}
+          disabled={busy || disabled}
+          className="px-5 py-2 rounded-xl bg-green-600 text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition"
+        >
+          {busy ? 'Accepting…' : 'Accept'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+
+const DeliveryAgentPage = () => {
+  const { axios, currency } = useAppContext();
+  const { setAgent } = useOutletContext();
+  const [data, setData] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [completing, setCompleting] = useState(null);
+  const [failing, setFailing] = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/agents/me/dashboard');
+      if (res.data.success) {
+        setData(res.data);
+        setAgent(res.data.agent);
       }
-    </div >
+    } catch (error) {
+      if (error.response?.status === 401 || error.response?.status === 403) window.location.reload();
+    }
+  }, [axios, setAgent]);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, POLL_MS);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const run = async (id, fn, okMsg) => {
+    setBusyId(id);
+    try {
+      const { data: r } = await fn();
+      if (r.success) toast.success(okMsg || r.message);
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Something went wrong');
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const accept = (id) => run(id, () => axios.post('/api/agents/accept', { orderId: id }), 'Order accepted');
+  const advance = (id, action) => run(id, () => axios.post(`/api/agents/orders/${id}/advance`, { action }));
+  const giveBack = (id) => {
+    if (!window.confirm('Return this order to the pool for another rider?')) return;
+    run(id, () => axios.post(`/api/agents/orders/${id}/reject`));
+  };
+
+  if (!data) {
+    return <div className="py-20 text-center text-gray-400 text-sm">Loading your tasks…</div>;
+  }
+
+  const { agent, stats, active, available, limits } = data;
+  const online = agent.status !== 'Inactive';
+  const full = active.length >= limits.maxActive;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-sm text-gray-500">Hi {agent.name.split(' ')[0]} 👋</p>
+        <h1 className="text-xl font-bold text-gray-900">{online ? (active.length ? 'You have active deliveries' : 'Waiting for orders') : "You're offline"}</h1>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Stat label="Today" value={`${stats.todayDeliveries} orders`} />
+        <Stat label="Earned" value={`${currency}${stats.todayEarnings}`} accent="text-green-700" />
+        <Stat label="Cash in hand" value={`${currency}${stats.cashInHand}`} accent={stats.cashInHand > 0 ? 'text-orange-600' : 'text-gray-900'} />
+      </div>
+
+      {!online && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 text-center">
+          <p className="font-semibold text-gray-800">Go online to start receiving orders</p>
+          <p className="text-sm text-gray-500 mt-1">Use the switch at the top right.</p>
+        </div>
+      )}
+
+      {active.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">Active · {active.length}/{limits.maxActive}</h2>
+          {active.map((o) => (
+            <TaskCard
+              key={o._id}
+              order={o}
+              busy={busyId === o._id}
+              onAdvance={advance}
+              onComplete={setCompleting}
+              onFail={setFailing}
+              onReturn={giveBack}
+            />
+          ))}
+        </section>
+      )}
+
+      {online && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">New orders · {available.length}</h2>
+            <button onClick={load} className="text-xs font-semibold text-green-700">Refresh</button>
+          </div>
+          {full ? (
+            <p className="text-sm text-gray-500 bg-white border border-gray-100 rounded-2xl p-4 text-center">You're at full load. Finish a delivery to take more.</p>
+          ) : available.length === 0 ? (
+            <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-8 text-center">
+              <div className="w-10 h-10 mx-auto mb-2 rounded-full border-4 border-green-100 border-t-green-500 animate-spin" />
+              <p className="text-sm text-gray-500">Looking for orders near you…</p>
+            </div>
+          ) : (
+            available.map((o) => (
+              <PoolCard key={o._id} order={o} busy={busyId === o._id} disabled={!!busyId} onAccept={accept} />
+            ))
+          )}
+        </section>
+      )}
+
+      {completing && <CompleteModal order={completing} onClose={() => setCompleting(null)} onDone={() => { setCompleting(null); load(); }} />}
+      {failing && <FailModal order={failing} onClose={() => setFailing(null)} onDone={() => { setFailing(null); load(); }} />}
+    </div>
   );
 };
 

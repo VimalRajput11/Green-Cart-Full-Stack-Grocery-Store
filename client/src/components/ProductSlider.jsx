@@ -24,7 +24,7 @@ const ProductSlider = ({ title, categoryName, products }) => {
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800 tracking-tight">{title}</h2>
                 <button
                     onClick={() => {
-                        navigate(`/products/${categoryName.toLowerCase()}`);
+                        navigate(categoryName ? `/products/${categoryName.toLowerCase()}` : "/products");
                         window.scrollTo(0, 0);
                     }}
                     className="text-green-600 font-semibold hover:text-green-700 transition lowercase"

@@ -1,43 +1,46 @@
 import React from 'react'
 import { assets } from '../assets/assets'
 import { Link } from 'react-router-dom'
+import { DELIVERY_ETA } from '../utils/orderStatus'
+
+const PROMOS = [
+  { title: 'Fresh fruits & veggies', sub: 'Farm fresh, every morning', to: '/products/fruits & vegetables', img: assets.fresh_fruits_image, bg: 'bg-emerald-50' },
+  { title: 'Dairy, bread & eggs', sub: 'Your daily breakfast run', to: '/products/dairy, bread & eggs', img: assets.dairy_product_image, bg: 'bg-amber-50' },
+  { title: 'Snacks & drinks', sub: 'Party-ready in minutes', to: '/products/snacks & munchies', img: assets.bottles_image, bg: 'bg-sky-50' },
+];
 
 const MainBanner = () => {
   return (
-    <div className='relative z-0 overflow-hidden rounded-2xl md:rounded-3xl shadow-lg mt-4'>
-      {/* Background Image with optional slight zoom on hover if we wanted JS control, but static is fine for now */}
-      <img src={assets.main_banner_bg} alt='banner' className='w-full hidden md:block object-cover h-[400px] lg:h-[500px]' />
-      <img src={assets.main_banner_bg_sm} alt='banner' className='w-full md:hidden object-cover h-[400px]' />
-
-      {/* Overlay Gradient for Text Readability */}
-      <div className='absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent md:from-black/30'></div>
-
-      <div className='absolute inset-0 flex flex-col items-center md:items-start justify-center px-6 md:pl-16 lg:pl-24 space-y-4 md:space-y-6'>
-
-        <div className='animate-in slide-in-from-bottom-5 fade-in duration-700'>
-          <span className='bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide shadow-sm mb-2 inline-block'>
-            Eco-Friendly Choice
+    <section className="mt-4 space-y-4">
+      <div className="relative overflow-hidden rounded-3xl">
+        <img src={assets.main_banner_bg} alt="" className="w-full hidden md:block object-cover h-[260px] lg:h-[300px]" />
+        <img src={assets.main_banner_bg_sm} alt="" className="w-full md:hidden object-cover h-[220px]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-green-900/80 via-green-900/40 to-transparent" />
+        <div className="absolute inset-0 flex flex-col justify-center px-6 md:px-12 text-white max-w-xl">
+          <span className="self-start bg-yellow-300 text-gray-900 text-[11px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide">
+            Delivery in {DELIVERY_ETA}
           </span>
-          <h1 className='text-4xl md:text-5xl lg:text-7xl font-extrabold text-white text-center md:text-left leading-tight drop-shadow-md'>
-            Freshness You <br className='hidden md:block' /> Can Trust
-          </h1>
-          <p className='text-white/90 text-center md:text-left text-sm md:text-lg mt-2 max-w-md font-medium drop-shadow-sm'>
-            From farm to table, experience the quality of hand-picked organic produce.
-          </p>
-        </div>
-
-        <div className='flex items-center gap-4 animate-in slide-in-from-bottom-8 fade-in duration-1000 delay-100'>
-          <Link to={'/products'} className='group flex items-center gap-2 px-8 py-3.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-full shadow-lg hover:shadow-green-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0'>
-            Shop Now
-            <svg className='w-4 h-4 transition-transform group-hover:translate-x-1' fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-          </Link>
-
-          <Link to={'/products'} className='group hidden md:flex items-center gap-2 px-8 py-3.5 bg-white/10 backdrop-blur-md border border-white/30 text-white font-semibold rounded-full hover:bg-white/20 transition-all'>
-            Explore Deals
+          <h1 className="text-3xl md:text-5xl font-extrabold leading-tight mt-3">Groceries delivered before you know it</h1>
+          <p className="text-white/85 text-sm md:text-base mt-2">Fresh produce, daily essentials and snacks at the best prices.</p>
+          <Link to="/products" className="self-start mt-5 bg-white text-green-800 font-bold text-sm px-6 py-2.5 rounded-xl hover:bg-green-50 transition">
+            Shop now
           </Link>
         </div>
       </div>
-    </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+        {PROMOS.map((p) => (
+          <Link key={p.title} to={p.to} className={`${p.bg} rounded-2xl p-4 md:p-5 flex items-center justify-between gap-3 hover:shadow-md transition group`}>
+            <div>
+              <p className="font-bold text-gray-900 leading-tight">{p.title}</p>
+              <p className="text-xs text-gray-500 mt-1">{p.sub}</p>
+              <span className="inline-block mt-3 text-xs font-bold bg-gray-900 text-white px-3 py-1.5 rounded-lg">Order now</span>
+            </div>
+            <img src={p.img} alt="" className="w-20 h-20 md:w-24 md:h-24 object-contain group-hover:scale-105 transition" />
+          </Link>
+        ))}
+      </div>
+    </section>
   )
 }
 

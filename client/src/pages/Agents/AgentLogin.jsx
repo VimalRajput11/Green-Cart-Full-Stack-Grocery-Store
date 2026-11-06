@@ -1,72 +1,59 @@
 import React, { useEffect, useState } from 'react';
-import { useAppContext } from '../../context/AppContext.jsx';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import { useAppContext } from '../../context/AppContext.jsx';
+import { assets } from '../../assets/assets';
 
 const AgentLogin = () => {
-  const { isAgent, setIsAgent, navigate } = useAppContext(); // Add these to your context
+  const { isAgent, setIsAgent, navigate, axios } = useAppContext();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const onSubmitHandler = async (event) => {
-    event.preventDefault();
-    if (!phone || !password) return toast.error("Phone and password required");
-
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
     try {
       const { data } = await axios.post('/api/agents/login', { phone, password });
       if (data.success) {
         setIsAgent(true);
-        localStorage.setItem('agentId', data.agent._id); // Store for later use
-        toast.success('Logged In');
+        toast.success(`Welcome, ${data.agent.name.split(' ')[0]}`);
         navigate('/agents');
-      } else {
-        toast.error(data.message || "Login failed");
       }
     } catch (error) {
-      toast.error(error.message || "Login error");
+      toast.error(error.response?.data?.message || 'Login failed');
+    } finally {
+      setBusy(false);
     }
   };
 
   useEffect(() => {
-    if (isAgent) {
-      navigate('/agents');
-    }
+    if (isAgent) navigate('/agents');
   }, [isAgent]);
 
-  return !isAgent && (
-    <form onSubmit={onSubmitHandler} className='min-h-screen flex items-center text-sm text-gray-600'>
-      <div className='flex flex-col gap-5 m-auto items-start p-8 py-12 min-w-80 sm:min-w-88 rounded-lg shadow-xl border border-gray-200'>
-        <p className='text-2xl font-medium m-auto'>
-          <span className='text-primary'>Agent</span> Login
-        </p>
+  if (isAgent) return null;
 
-        <div className='w-full'>
-          <p>Phone Number</p>
-          <input
-            onChange={(e) => setPhone(e.target.value)}
-            value={phone}
-            type='text'
-            placeholder='Enter your phone number'
-            className='border border-gray-200 rounded w-full p-2 mt-1 outline-primary'
-            required
-          />
-        </div>
-
-        <div className='w-full'>
-          <p>Password</p>
-          <input
-            onChange={(e) => setPassword(e.target.value)}
-            value={password}
-            type='password'
-            placeholder='Enter your password'
-            className='border border-gray-200 rounded w-full p-2 mt-1 outline-primary'
-            required
-          />
-        </div>
-
-        <button className='bg-primary text-white w-full py-2 rounded-md cursor-pointer'>Login</button>
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-green-600 to-green-700 flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-white text-center">
+        <div className="bg-white rounded-2xl px-4 py-2 mb-6"><img src={assets.logo} alt="GreenCart" className="h-8" /></div>
+        <h1 className="text-3xl font-bold">Delivery Partner</h1>
+        <p className="text-green-100 mt-2 text-sm">Log in to start your shift</p>
       </div>
-    </form>
+      <form onSubmit={onSubmit} className="bg-white rounded-t-3xl px-6 pt-8 pb-10 space-y-4 w-full max-w-md mx-auto">
+        <div>
+          <label htmlFor="phone" className="text-sm font-medium text-gray-600">Phone number</label>
+          <input id="phone" inputMode="tel" autoComplete="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Registered phone number" className="mt-1 w-full border border-gray-200 rounded-xl p-3.5 outline-none focus:border-green-600" />
+        </div>
+        <div>
+          <label htmlFor="password" className="text-sm font-medium text-gray-600">Password</label>
+          <input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="mt-1 w-full border border-gray-200 rounded-xl p-3.5 outline-none focus:border-green-600" />
+        </div>
+        <button disabled={busy} className="w-full py-3.5 rounded-xl bg-green-600 text-white font-bold disabled:opacity-60">
+          {busy ? 'Logging in…' : 'Log in'}
+        </button>
+        <p className="text-xs text-center text-gray-400">Don't have an account? Your store manager creates it for you.</p>
+      </form>
+    </div>
   );
 };
 
