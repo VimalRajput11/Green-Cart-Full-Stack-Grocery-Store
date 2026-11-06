@@ -4,11 +4,17 @@ import Product from "../models/Product.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 
-// Razorpay instance
-const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_API_KEY,
-  key_secret: process.env.RAZORPAY_API_SECRET,
-});
+// Razorpay instance (created lazily so a missing env var can't crash the whole server at startup)
+let razorpayInstance;
+const getRazorpay = () => {
+  if (!razorpayInstance) {
+    razorpayInstance = new Razorpay({
+      key_id: process.env.RAZORPAY_API_KEY,
+      key_secret: process.env.RAZORPAY_API_SECRET,
+    });
+  }
+  return razorpayInstance;
+};
 
 // Place order (Cash on Delivery)
 export const addOrder = async (req, res) => {
@@ -101,7 +107,7 @@ export const placeOrderRazorpay = async (req, res) => {
       },
     };
 
-    const razorpayOrder = await razorpayInstance.orders.create(options);
+    const razorpayOrder = await getRazorpay().orders.create(options);
 
     res.status(200).json({
       success: true,

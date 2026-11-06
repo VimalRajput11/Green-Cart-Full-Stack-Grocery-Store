@@ -43,8 +43,11 @@ app.use('/api/agents', agentRouter);
 app.use('/api/category', categoryRouter);
 app.use('/api/ai', aiRouter);
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+// On Vercel the app is exported as a serverless handler; only listen when running locally
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+  });
+}
 
 export default app;
