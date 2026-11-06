@@ -152,11 +152,21 @@ const importSheet = async (commit) => {
   const batch = limitArg ? ready.slice(0, Number(limitArg.split('=')[1]) || ready.length) : ready;
   if (batch.length < ready.length) console.log(`Importing first ${batch.length} of ${ready.length} (--limit)`);
 
+  // Skip repeated names inside the sheet itself
+  const seen = new Set();
+  const queue = batch.filter(({ r }) => !seen.has(norm(r.name)) && seen.add(norm(r.name)));
+
   let done = 0; let failed = 0;
-  for (const { r, item, mrp, price, stock } of batch) {
+  const CONCURRENCY = 3; // products in flight at once; each uploads its photos in parallel
+  const worker = async () => {
+    while (queue.length) {
+      const { r, item, mrp, price, stock } = queue.shift();
+      await importOne(r, item, mrp, price, stock);
+    }
+  };
+  const importOne = async (r, item, mrp, price, stock) => {
     try {
-      const image = [];
-      for (const file of item.images.slice(0, MAX_IMAGES)) image.push(await uploadImage(file));
+      const image = await Promise.all(item.images.slice(0, MAX_IMAGES).map(uploadImage));
       await Product.create({
         name: r.name,
         description: (r.description || item.description.join(' | ')).split(' | ').filter(Boolean),
@@ -175,7 +185,8 @@ const importSheet = async (commit) => {
       failed++;
       console.log(`  FAILED ${r.name}: ${error.message}`);
     }
-  }
+  };
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
   console.log(`\nDone. Added ${done}, failed ${failed}. Re-run the same command to retry failures.`);
 };
 
