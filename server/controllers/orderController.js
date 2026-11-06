@@ -1,8 +1,12 @@
 import Order from "../models/Order.js";
 import User from "../models/User.js";
 import Product from "../models/Product.js";
+import DeliveryAgent from "../models/DeliveryAgent.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import {
+  STATUS, PRE_PICKUP, ACTIVE, FINAL, FULFILLABLE, addTimeline, restoreStock, generateOtp,
+} from "../utils/orderFlow.js";
 
 // Razorpay instance (created lazily so a missing env var can't crash the whole server at startup)
 let razorpayInstance;
@@ -16,49 +20,75 @@ const getRazorpay = () => {
   return razorpayInstance;
 };
 
+const fail = (res, code, message) => res.status(code).json({ success: false, message });
+
+// Validate every line before touching stock, and price it from the DB
+const priceItems = async (items) => {
+  let subtotal = 0;
+  const lines = [];
+  for (const item of items) {
+    const quantity = Number(item.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Invalid quantity");
+    const product = await Product.findById(item.product);
+    if (!product) throw new Error("A product in your cart is no longer available");
+    if ((product.stock || 0) < quantity) {
+      throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`);
+    }
+    subtotal += product.offerPrice * quantity;
+    lines.push({ product, quantity });
+  }
+  // 2% handling fee, rounded to 2 decimals (matches the cart page)
+  const amount = Math.round(subtotal * 1.02 * 100) / 100;
+  return { lines, amount };
+};
+
+const takeStock = async (lines) => {
+  const taken = [];
+  try {
+    for (const { product, quantity } of lines) {
+      // Conditional decrement so two orders can't oversell the same unit
+      const updated = await Product.findOneAndUpdate(
+        { _id: product._id, stock: { $gte: quantity } },
+        { $inc: { stock: -quantity } },
+        { new: true }
+      );
+      if (!updated) throw new Error(`${product.name} just went out of stock`);
+      taken.push({ id: product._id, quantity });
+      if (updated.stock <= 0) await Product.findByIdAndUpdate(product._id, { inStock: false });
+    }
+  } catch (error) {
+    // Roll back anything already taken for this order
+    for (const { id, quantity } of taken) {
+      await Product.findByIdAndUpdate(id, { $inc: { stock: quantity }, inStock: true });
+    }
+    throw error;
+  }
+};
+
 // Place order (Cash on Delivery)
 export const addOrder = async (req, res) => {
   try {
     const { items, address } = req.body;
-    const userId = req.userId;
+    if (!address || !items || items.length === 0) return fail(res, 400, "Address and items are required");
 
-    if (!address || !items || items.length === 0) {
-      return res.status(400).json({ success: false, message: "Address and items are required" });
-    }
+    const { lines, amount } = await priceItems(items);
+    await takeStock(lines);
 
-    let amount = 0;
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-      if (!product) continue;
-
-      amount += product.offerPrice * item.quantity;
-
-      // Check for sufficient stock before proceeding
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ success: false, message: `Insufficient stock for ${product.name}. Available: ${product.stock}` });
-      }
-
-      // Decrement stock
-      const newStock = Math.max(0, (product.stock || 0) - item.quantity);
-      await Product.findByIdAndUpdate(item.product, {
-        stock: newStock,
-        inStock: newStock > 0
-      });
-    }
-    amount += Math.floor(amount * 0.02); // Add tax or service fee
-
-    await Order.create({
-      userId,
-      items,
+    const order = new Order({
+      userId: req.userId,
+      items: lines.map(({ product, quantity }) => ({ product: product._id.toString(), quantity })),
       address,
       amount,
       paymentType: "COD",
-      // isPaid will default to false, agent will mark it true after collecting cash
+      deliveryOtp: generateOtp(),
     });
+    addTimeline(order, STATUS.PLACED, "customer", "Cash on delivery");
+    await order.save();
+    await User.findByIdAndUpdate(req.userId, { cartItems: {} });
 
-    res.status(200).json({ success: true, message: "Order placed successfully (COD)" });
+    res.status(200).json({ success: true, message: "Order placed successfully", orderId: order._id });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error placing COD order", error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -66,234 +96,245 @@ export const addOrder = async (req, res) => {
 export const placeOrderRazorpay = async (req, res) => {
   try {
     const { items, address } = req.body;
-    const userId = req.userId;
+    if (!address || !items || items.length === 0) return fail(res, 400, "Address and items are required");
 
-    if (!address || !items || items.length === 0) {
-      return res.status(400).json({ success: false, message: "Address and items are required" });
-    }
-
-    let amount = 0;
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-      if (!product) {
-        return res.status(400).json({ success: false, message: `Product not found: ${item.product}` });
-      }
-
-      // Check for sufficient stock before proceeding
-      if (product.stock < item.quantity) {
-        return res.status(400).json({ success: false, message: `Insufficient stock for ${product.name}. Available: ${product.stock}` });
-      }
-
-      amount += product.offerPrice * item.quantity;
-    }
-
-    amount += Math.ceil(amount * 0.02);
+    const { lines, amount } = await priceItems(items);
 
     const order = await Order.create({
-      userId,
-      items,
+      userId: req.userId,
+      items: lines.map(({ product, quantity }) => ({ product: product._id.toString(), quantity })),
       address,
       amount,
       paymentType: "Online",
+      deliveryOtp: generateOtp(),
     });
 
-    const options = {
-      amount: amount * 100, // in paise
+    const razorpayOrder = await getRazorpay().orders.create({
+      amount: Math.round(amount * 100), // in paise
       currency: "INR",
       receipt: `order_rcptid_${order._id}`,
-      notes: {
-        orderId: order._id.toString(),
-        userId,
-      },
-    };
-
-    const razorpayOrder = await getRazorpay().orders.create(options);
-
-    res.status(200).json({
-      success: true,
-      order: razorpayOrder,
-      orderId: order._id.toString(),
+      notes: { orderId: order._id.toString(), userId: req.userId },
     });
+
+    res.status(200).json({ success: true, order: razorpayOrder, orderId: order._id.toString() });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error creating Razorpay order", error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 export const verifyRazorpayPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
-    // console.log("Received payment verification request:", req.body);
     const userId = req.userId;
-
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !orderId || !userId) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !orderId) {
+      return fail(res, 400, "Missing required fields");
     }
 
-    const sign = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_API_SECRET)
-      .update(sign)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
+    if (expectedSignature !== razorpay_signature) return fail(res, 400, "Invalid payment signature");
 
-    if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: "Invalid payment signature" });
-    }
+    const order = await Order.findOne({ _id: orderId, userId });
+    if (!order) return fail(res, 404, "Order not found");
+    if (order.isPaid) return res.json({ success: true, message: "Already verified" });
 
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
-
-    // Decrement stock for each item in the order
+    const lines = [];
     for (const item of order.items) {
       const product = await Product.findById(item.product);
-      if (product) {
-        const newStock = Math.max(0, (product.stock || 0) - item.quantity);
-        await Product.findByIdAndUpdate(item.product, {
-          stock: newStock,
-          inStock: newStock > 0
-        });
-      }
+      if (product) lines.push({ product, quantity: item.quantity });
+    }
+    try {
+      await takeStock(lines);
+    } catch (stockError) {
+      // Paid, but stock ran out between checkout and payment: cancel and flag refund
+      order.isPaid = true;
+      order.paidAt = new Date();
+      order.paymentInfo = { paymentId: razorpay_payment_id, razorpay_order_id };
+      order.status = STATUS.CANCELLED;
+      order.cancelReason = stockError.message;
+      order.cancelledBy = "system";
+      order.refundStatus = "Pending";
+      order.stockRestored = true;
+      addTimeline(order, STATUS.CANCELLED, "system", `${stockError.message}. Refund initiated.`);
+      await order.save();
+      return fail(res, 409, `${stockError.message}. Your payment will be refunded.`);
     }
 
-    await Order.findByIdAndUpdate(orderId, {
-      isPaid: true,
-      paymentInfo: {
-        paymentId: razorpay_payment_id,
-      },
-    });
-
+    order.isPaid = true;
+    order.paidAt = new Date();
+    order.paymentInfo = { paymentId: razorpay_payment_id, razorpay_order_id };
+    addTimeline(order, STATUS.PLACED, "customer", "Paid online");
+    await order.save();
     await User.findByIdAndUpdate(userId, { cartItems: {} });
 
-    res.status(200).json({ success: true, message: "Payment verified and order marked as paid" });
+    res.status(200).json({ success: true, message: "Payment verified and order placed" });
   } catch (error) {
     console.error("Payment verification error:", error.message);
-    res.status(500).json({ success: false, message: "Payment verification failed", error: error.message });
+    fail(res, 500, "Payment verification failed");
   }
 };
 
-// Fetch user-specific orders
+// Fetch user-specific orders (with delivery OTP for active orders)
 export const getUserOrders = async (req, res) => {
   try {
-    const userId = req.userId;
-
     const orders = await Order.find({
-      userId,
+      userId: req.userId,
       deletedByUser: { $ne: true },
-      $or: [
-        { paymentType: "COD" },
-        { paymentType: "Online", isPaid: true },
-      ],
+      ...FULFILLABLE,
     })
-      .populate({ path: "items.product", select: "name image category offerPrice" })
+      .select("+deliveryOtp")
+      .populate({ path: "items.product", select: "name image category offerPrice weight" })
       .populate("address")
-      .populate("assignedTo", "name")
-      .sort({ createdAt: -1 });
+      .populate("assignedTo", "name phone vehicleType vehicleNumber currentLocation")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    for (const order of orders) {
+      // OTP only matters while the order is on its way
+      if (!ACTIVE.includes(order.status)) delete order.deliveryOtp;
+      // Share rider location only while they're carrying this order
+      if (order.assignedTo && ![STATUS.OUT, STATUS.ARRIVING, STATUS.REACHED].includes(order.status)) {
+        delete order.assignedTo.currentLocation;
+      }
+    }
 
     res.status(200).json({ success: true, orders });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error fetching user orders", error: error.message });
+    fail(res, 500, "Error fetching your orders");
+  }
+};
+
+// Customer cancels before the rider picks it up
+export const cancelOrderByUser = async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.orderId, userId: req.userId });
+    if (!order) return fail(res, 404, "Order not found");
+    if (!PRE_PICKUP.includes(order.status)) return fail(res, 400, "Order is already on the way and can't be cancelled");
+
+    const riderId = order.assignedTo;
+    order.status = STATUS.CANCELLED;
+    order.cancelReason = req.body?.reason || "Cancelled by customer";
+    order.cancelledBy = "customer";
+    order.assignedTo = null;
+    if (order.isPaid && order.paymentType === "Online") order.refundStatus = "Pending";
+    await restoreStock(order);
+    addTimeline(order, STATUS.CANCELLED, "customer", order.cancelReason);
+    await order.save();
+    if (riderId) await syncRider(riderId);
+
+    res.json({ success: true, message: order.refundStatus === "Pending" ? "Order cancelled. Refund initiated." : "Order cancelled" });
+  } catch (error) {
+    fail(res, 500, "Could not cancel order");
   }
 };
 
 // Admin/Seller: Get all orders + stats
 export const getAllOrders = async (req, res) => {
   try {
-    const baseQuery = {
-      $or: [
-        { paymentType: "COD" }, // Show all COD orders
-        { paymentType: "Online", isPaid: true } // Only show paid online orders
-      ],
-    };
-
-    // Calculate stats from ALL valid orders (including hidden ones)
-    const allValidOrders = await Order.find(baseQuery);
+    const allValidOrders = await Order.find(FULFILLABLE).select("amount isPaid status");
     const stats = {
-      totalSales: allValidOrders.reduce((acc, order) => acc + (order.isPaid ? order.amount : 0), 0),
+      totalSales: allValidOrders.reduce((acc, order) => acc + (order.isPaid && order.status !== STATUS.CANCELLED ? order.amount : 0), 0),
       totalOrders: allValidOrders.length,
-      pendingOrders: allValidOrders.filter(o => !['Delivered', 'Cancelled'].includes(o.status)).length
+      pendingOrders: allValidOrders.filter((o) => ACTIVE.includes(o.status)).length,
     };
 
-    // Fetch visible orders for the seller list
-    const orders = await Order.find({
-      ...baseQuery,
-      deletedBySeller: { $ne: true }
-    })
+    const orders = await Order.find({ ...FULFILLABLE, deletedBySeller: { $ne: true } })
       .populate("items.product address")
-      .populate("assignedTo", "name phone")
+      .populate("assignedTo", "name phone vehicleType vehicleNumber status")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, orders, stats });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error fetching all orders", error: error.message });
+    fail(res, 500, "Error fetching orders");
   }
 };
 
+const syncRider = async (riderId) => {
+  const rider = await DeliveryAgent.findById(riderId);
+  if (!rider || rider.status === "Inactive") return;
+  const active = await Order.countDocuments({ assignedTo: riderId, status: { $in: ACTIVE } });
+  rider.status = active > 0 ? "On Delivery" : "Available";
+  await rider.save();
+};
 
+// Seller actions: pack or cancel. Delivery steps belong to the rider.
 export const updateOrderStatus = async (req, res) => {
   try {
-    const { orderId: paramId } = req.params;
-    const { orderId: bodyId, status } = req.body;
-    const orderId = paramId || bodyId;
+    const orderId = req.params.orderId || req.body.orderId;
+    const { status, reason } = req.body;
+    if (!orderId) return fail(res, 400, "Order ID is required");
 
-    if (!orderId) {
-      return res.status(400).json({ success: false, message: "Order ID is required" });
+    const order = await Order.findById(orderId);
+    if (!order) return fail(res, 404, "Order not found");
+    if (FINAL.includes(order.status)) return fail(res, 400, `Order is already ${order.status}`);
+
+    if (status === STATUS.PACKED) {
+      if (order.status !== STATUS.PLACED) return fail(res, 400, "Only new orders can be marked packed");
+      order.status = STATUS.PACKED;
+      order.packedAt = new Date();
+      addTimeline(order, STATUS.PACKED, "seller");
+    } else if (status === STATUS.CANCELLED) {
+      const riderId = order.assignedTo;
+      order.status = STATUS.CANCELLED;
+      order.cancelReason = reason || "Cancelled by store";
+      order.cancelledBy = "seller";
+      if (order.isPaid && order.paymentType === "Online") order.refundStatus = "Pending";
+      await restoreStock(order);
+      addTimeline(order, STATUS.CANCELLED, "seller", order.cancelReason);
+      await order.save();
+      if (riderId) await syncRider(riderId);
+      return res.json({ success: true, message: "Order cancelled" });
+    } else {
+      return fail(res, 400, "Store can only mark orders Packed or Cancelled. Delivery steps are updated by the rider.");
     }
 
-    const validStatuses = ['Order Placed', 'Picked', 'Out for Delivery', 'Arriving', 'Reached Location', 'Delivered', 'Cancelled'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
-    }
-
-    const order = await Order.findByIdAndUpdate(orderId, { status }, { new: true });
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
-
-    res.status(200).json({ success: true, message: "Order status updated", order });
+    await order.save();
+    res.status(200).json({ success: true, message: `Order marked ${order.status}` });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to update order status", error: error.message });
+    fail(res, 500, "Failed to update order status");
   }
 };
+
+// Seller marks a refund as done
+export const markRefunded = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.orderId);
+    if (!order) return fail(res, 404, "Order not found");
+    if (order.refundStatus !== "Pending") return fail(res, 400, "No refund pending");
+    order.refundStatus = "Refunded";
+    addTimeline(order, "Refunded", "seller");
+    await order.save();
+    res.json({ success: true, message: "Refund marked as completed" });
+  } catch (error) {
+    fail(res, 500, "Server error");
+  }
+};
+
 export const deleteDeliveredOrders = async (req, res) => {
   try {
     const result = await Order.updateMany(
-      { status: 'Delivered', deletedBySeller: { $ne: true } },
+      { status: { $in: FINAL }, deletedBySeller: { $ne: true }, refundStatus: { $ne: "Pending" } },
       { $set: { deletedBySeller: true } }
     );
-
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ success: false, message: "No delivered orders found to clear" });
-    }
-
-    res.status(200).json({ success: true, message: `${result.modifiedCount} delivered orders cleared from your view` });
+    if (result.matchedCount === 0) return fail(res, 404, "No completed orders to clear");
+    res.status(200).json({ success: true, message: `${result.modifiedCount} completed orders cleared from your view` });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error clearing delivered orders", error: error.message });
+    fail(res, 500, "Error clearing orders");
   }
 };
 
-// User: Delete specific order from history
+// User: hide a finished order from history
 export const deleteOrder = async (req, res) => {
   try {
-    const { orderId } = req.params;
-    const userId = req.userId;
-
-    const order = await Order.findOne({ _id: orderId, userId });
-
-    if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found or not authorized" });
-    }
-
-    // Optional: Only allow deletion if Delivered or Cancelled
-    if (!['Delivered', 'Cancelled'].includes(order.status)) {
-      return res.status(400).json({ success: false, message: "Active orders cannot be deleted from history" });
-    }
-
+    const order = await Order.findOne({ _id: req.params.orderId, userId: req.userId });
+    if (!order) return fail(res, 404, "Order not found or not authorized");
+    if (!FINAL.includes(order.status)) return fail(res, 400, "Active orders cannot be removed from history");
     order.deletedByUser = true;
     await order.save();
-
-    res.status(200).json({ success: true, message: "Order deleted from history" });
+    res.status(200).json({ success: true, message: "Order removed from history" });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error deleting order", error: error.message });
+    fail(res, 500, "Error deleting order");
   }
 };

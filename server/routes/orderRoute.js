@@ -7,21 +7,28 @@ import {
   addOrder,
   placeOrderRazorpay,
   verifyRazorpayPayment,
-  updateOrderStatus, // ✅ import the new controller
+  updateOrderStatus,
   deleteDeliveredOrders,
   deleteOrder,
+  cancelOrderByUser,
+  markRefunded,
 } from "../controllers/orderController.js";
 
 const orderRouter = express.Router();
+
+// Customer
 orderRouter.post('/cod', authUser, addOrder);
 orderRouter.post('/razorpay', authUser, placeOrderRazorpay);
 orderRouter.post('/verify', authUser, verifyRazorpayPayment);
 orderRouter.get('/user', authUser, getUserOrders);
+orderRouter.post('/user/:orderId/cancel', authUser, cancelOrderByUser);
 orderRouter.delete('/user/:orderId', authUser, deleteOrder);
 
+// Seller
 orderRouter.get('/seller', authSeller, getAllOrders);
-orderRouter.post('/status', authSeller, updateOrderStatus); // Support POST for frontend compatibility
+orderRouter.post('/status', authSeller, updateOrderStatus);
 orderRouter.put('/status/:orderId', authSeller, updateOrderStatus);
+orderRouter.post('/:orderId/refunded', authSeller, markRefunded);
 orderRouter.delete('/delete-delivered', authSeller, deleteDeliveredOrders);
 
 export default orderRouter;

@@ -34,6 +34,13 @@ export const authAgent = async (req, res, next) => {
       });
     }
 
+    if (agent.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is blocked. Contact the store manager.',
+      });
+    }
+
     // Set to request for further use
     req.userId = agent._id.toString();
     req.agent = agent;
