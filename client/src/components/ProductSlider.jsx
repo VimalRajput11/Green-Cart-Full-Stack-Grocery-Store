@@ -19,49 +19,51 @@ const ProductSlider = ({ title, categoryName, products }) => {
     if (!products || products.length === 0) return null;
 
     return (
-        <div className="my-1">
-            <div className="flex justify-between items-center mb-1 px-1">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-800 tracking-tight">{title}</h2>
+        <section>
+            <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg md:text-2xl font-bold text-gray-900 tracking-tight">{title}</h2>
                 <button
                     onClick={() => {
                         navigate(categoryName ? `/products/${categoryName.toLowerCase()}` : "/products");
                         window.scrollTo(0, 0);
                     }}
-                    className="text-green-600 font-semibold hover:text-green-700 transition lowercase"
+                    className="text-sm md:text-base text-green-700 font-semibold hover:text-green-800 transition"
                 >
-                    see all
+                    See all
                 </button>
             </div>
 
-            <div className="relative group px-1">
-                {/* Left Arrow */}
+            <div className="relative group">
                 <button
                     onClick={() => scroll('left')}
-                    className="absolute left-[-45px] top-[140px] -translate-y-1/2 z-20 bg-white shadow-md rounded-full w-9 h-9 flex items-center justify-center border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex hover:bg-gray-50 text-gray-800"
+                    aria-label="Scroll left"
+                    className="absolute -left-4 top-[38%] -translate-y-1/2 z-20 bg-white shadow-lg rounded-full w-10 h-10 items-center justify-center border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex hover:bg-gray-50 text-gray-800"
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
 
-                {/* Right Arrow */}
                 <button
                     onClick={() => scroll('right')}
-                    className="absolute right-[-45px] top-[140px] -translate-y-1/2 z-20 bg-white shadow-md rounded-full w-9 h-9 flex items-center justify-center border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex hover:bg-gray-50 text-gray-800"
+                    aria-label="Scroll right"
+                    className="absolute -right-4 top-[38%] -translate-y-1/2 z-20 bg-white shadow-lg rounded-full w-10 h-10 items-center justify-center border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex hover:bg-gray-50 text-gray-800"
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </button>
 
                 <div
                     ref={scrollRef}
-                    className="flex overflow-x-auto gap-3 pb-2 no-scrollbar scroll-smooth w-full max-w-full"
+                    className="flex overflow-x-auto gap-3 pb-2 no-scrollbar scroll-smooth w-full max-w-full [mask-image:linear-gradient(to_right,black_calc(100%-48px),transparent)]"
                 >
                     {products.filter(p => p.stock > 0 || (p.stock === undefined && p.inStock)).map((product) => (
                         <div key={product._id} className="w-[150px] sm:w-[170px] md:w-[180px] shrink-0">
                             <ProductCard product={product} />
                         </div>
                     ))}
+                    {/* spacer so the last card can scroll clear of the edge fade */}
+                    <div className="w-8 shrink-0" aria-hidden="true" />
                 </div>
             </div>
-        </div>
+        </section>
     );
 };
 

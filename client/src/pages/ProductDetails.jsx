@@ -3,6 +3,8 @@ import { useAppContext } from "../context/AppContext";
 import { Link, useParams } from "react-router-dom";
 import { assets } from "../assets/assets";
 import ProductCard from "../components/ProductCard";
+import { DELIVERY_ETA } from "../utils/orderStatus";
+import { optimizeImg } from '../utils/image';
 
 const ProductDetails = () => {
 
@@ -48,7 +50,7 @@ const ProductDetails = () => {
                                 onClick={() => setThumbnail(image)}
                                 className={`border rounded-lg overflow-hidden cursor-pointer transition-all duration-200 aspect-square w-20 md:w-full flex-shrink-0 ${thumbnail === image ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200 hover:border-green-300'}`}
                             >
-                                <img src={image} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-contain p-1" />
+                                <img src={optimizeImg(image, 160)} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-contain p-1" />
                             </div>
                         ))}
                     </div>
@@ -58,7 +60,7 @@ const ProductDetails = () => {
                         <div className="absolute top-4 right-4 bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full font-bold uppercase tracking-wide">
                             Best Quality
                         </div>
-                        <img src={thumbnail} alt="Selected product" className="w-full h-auto max-h-[500px] object-contain transform hover:scale-105 transition-transform duration-500" />
+                        <img src={optimizeImg(thumbnail, 900)} alt="Selected product" className="w-full h-auto max-h-[500px] object-contain transform hover:scale-105 transition-transform duration-500" />
                     </div>
                 </div>
 
@@ -71,12 +73,12 @@ const ProductDetails = () => {
                     <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-800 leading-tight mb-2 capitalize">{product.name}</h1>
 
                     <div className="flex items-center gap-2 mb-6">
-                        <div className="flex text-yellow-500">
-                            {Array(5).fill('').map((_, i) => (
-                                <svg key={i} className={`w-5 h-5 ${i < 4 ? 'fill-current' : 'text-gray-300 fill-current'}`} viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
-                            ))}
-                        </div>
-                        <span className="text-gray-400 text-sm font-medium">(120 Reviews)</span>
+                        <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-800 text-xs font-bold px-2.5 py-1 rounded-md">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 2" /></svg>
+                            Delivery in {DELIVERY_ETA}
+                        </span>
+                        {product.stock > 0 && product.stock < 5 && <span className="text-orange-600 text-sm font-semibold">Only {product.stock} left</span>}
+                        {product.stock <= 0 && <span className="text-red-600 text-sm font-semibold">Out of stock</span>}
                     </div>
 
                     <div className="border-t border-b border-gray-100 py-6 mb-6">
@@ -87,7 +89,7 @@ const ProductDetails = () => {
                                 {Math.round(((product.price - product.offerPrice) / product.price) * 100)}% OFF
                             </span>
                         </div>
-                        <p className="text-gray-500 text-sm">Inclusive of all taxes</p>
+                        <p className="text-gray-500 text-sm">MRP inclusive of all taxes</p>
                     </div>
 
                     {product.description.some(desc => desc.trim() !== "") && (

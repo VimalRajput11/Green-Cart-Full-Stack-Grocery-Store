@@ -3,6 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { assets } from "../assets/assets";
 import toast from "react-hot-toast";
 import { DELIVERY_ETA } from "../utils/orderStatus";
+import { optimizeImg } from '../utils/image';
 
 const Cart = () => {
     const {
@@ -183,7 +184,7 @@ const Cart = () => {
                                     navigate(`/products/${product.category.toLowerCase()}/${product._id}`);
                                     scrollTo(0, 0);
                                 }} className="cursor-pointer w-20 h-20 sm:w-28 sm:h-28 flex-shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
-                                    <img className="w-full h-full object-contain" src={product.image[0]} alt={product.name} />
+                                    <img className="w-full h-full object-contain" src={optimizeImg(product.image[0], 240)} alt={product.name} />
                                 </div>
 
                                 {/* Product Info */}
@@ -191,7 +192,7 @@ const Cart = () => {
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="pr-4">
                                             <h3 onClick={() => navigate(`/products/${product.category.toLowerCase()}/${product._id}`)} className="text-base sm:text-lg font-bold text-gray-800 cursor-pointer hover:text-green-600 transition mb-1 leading-tight">{product.name}</h3>
-                                            <p className="text-xs sm:text-sm text-gray-500">{product.category} • {product.weight || "N/A"}</p>
+                                            <p className="text-xs sm:text-sm text-gray-500">{product.category}{product.weight ? ` • ${product.weight}` : ''}</p>
                                         </div>
                                         <p className="text-base sm:text-lg font-bold text-gray-900 flex-shrink-0">{currency}{product.offerPrice * product.quantity}</p>
                                     </div>

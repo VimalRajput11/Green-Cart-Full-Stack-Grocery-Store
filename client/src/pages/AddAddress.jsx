@@ -4,8 +4,10 @@ import { useAppContext } from '../context/AppContext'
 import toast from 'react-hot-toast'
 
 const InputField = ({type, placeholder, name, handleChange, address})=>(
-    <input className='w-full px-2 py-2.5 border border-gray-500/30 rounded outline-none 
-    text-gray-500 focus:border-primary transition' 
+    <input className='w-full px-4 py-3 border border-gray-200 rounded-xl outline-none bg-white
+    text-gray-800 placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 transition'
+    required
+    aria-label={placeholder}
     type={type} 
     placeholder={placeholder}
     onChange={handleChange}
@@ -17,7 +19,7 @@ const InputField = ({type, placeholder, name, handleChange, address})=>(
 
 const AddAddress = () =>{
 
-  const {axios, user, navigate} = useAppContext();
+  const {axios, user, navigate, authChecked, setShowUserLogin} = useAppContext();
 
     const [address, setAddress] = useState({
       firstName: '',
@@ -60,18 +62,20 @@ const AddAddress = () =>{
         }
       }
 
+      // Only redirect once we actually know the visitor isn't logged in
       useEffect(() =>{
-        if(!user){
+        if(authChecked && !user){
+          setShowUserLogin(true)
           navigate('/cart')
         }
-      },[])
+      },[authChecked, user])
 
   return (
-    <div className='mt-16 pb-16'>
-        <p className='text-2xl md:text-3xl text-gray-500'>Add Shipping 
-          <span className='font-semibold text-primary'> Address</span></p>
-          <div className='flex flex-col-reverse md:flex-row justify-between mt-10'> 
-            <div className='flex-1 max-w-md'> 
+    <div className='mt-8 md:mt-12 pb-16'>
+          <div className='flex flex-col md:flex-row justify-between items-center gap-10'>
+            <div className='flex-1 w-full max-w-lg bg-white border border-gray-100 rounded-3xl shadow-sm p-6 md:p-8'>
+              <h1 className='text-2xl font-bold text-gray-900'>Add delivery address</h1>
+              <p className='text-sm text-gray-500 mt-1'>Your delivery partner will use this to reach you.</p>
               <form onSubmit={onSubmitHandler} className='space-y-3 mt-6 text-sm'>
                   <div className='grid grid-cols-2 gap-4'>
                     <InputField handleChange={handleChange} address={address} name='firstName'
@@ -83,7 +87,7 @@ const AddAddress = () =>{
                   <InputField handleChange={handleChange} address={address} name='email'
                   type='email' placeholder='Email address'/>
                   <InputField handleChange={handleChange} address={address} name='street'
-                  type='text' placeholder='Street'/>
+                  type='text' placeholder='House / flat no., building, street, area'/>
 
                   <div className='grid grid-cols-2 gap-4'>
                   <InputField handleChange={handleChange} address={address} name='city'
@@ -94,22 +98,22 @@ const AddAddress = () =>{
 
                   <div className='grid grid-cols-2 gap-4'>
                   <InputField handleChange={handleChange} address={address} name='zipcode'
-                  type='number' placeholder='Zip Code'/>
+                  type='number' placeholder='PIN code'/>
                   <InputField handleChange={handleChange} address={address} name='country'
                   type='text' placeholder='Country'/>
                   </div>
 
                   <InputField handleChange={handleChange} address={address} name='phone'
-                  type='text' placeholder='Phone'/>
+                  type='tel' placeholder='Phone number (for delivery updates)'/>
 
-                  <button className='w-full mt-6 bg-primary text-white py-3 hover:bg-primary-dull
-                  transition cursor-pointer uppercase'>
+                  <button className='w-full mt-4 bg-primary text-white font-bold py-3.5 rounded-xl hover:bg-primary-dull
+                  transition cursor-pointer'>
                     Save address
                   </button>
 
               </form>
             </div>
-            <img className='md:mr-16 mb-16 md:mt-0' src={assets.add_address_iamge} alt='Add address' />
+            <img className='hidden md:block w-full max-w-sm md:mr-8' src={assets.add_address_iamge} alt='' />
           </div>
     </div>
   )

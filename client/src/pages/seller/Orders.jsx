@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { assets } from '../../assets/assets';
 import toast from 'react-hot-toast';
 import { STATUS, STATUS_STYLE, PRE_PICKUP, IN_TRANSIT, ACTIVE, shortId, timeAgo } from '../../utils/orderStatus';
+import { optimizeImg } from '../../utils/image';
 
 const MAX_LOAD = 3;
 
@@ -223,7 +224,7 @@ const Orders = () => {
                         {order.items.map((item, idx) => (
                           <div key={idx} className="flex items-center gap-4 p-3 rounded-2xl border border-gray-50 bg-gray-50/30">
                             <div className="w-12 h-12 bg-white rounded-xl border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden p-1.5">
-                              <img src={item.product?.image?.[0] || assets.box_icon} className="w-full h-full object-contain" alt="" />
+                              <img src={optimizeImg(item.product?.image?.[0], 120) || assets.box_icon} className="w-full h-full object-contain" alt="" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-gray-900 text-sm truncate">{item.product?.name || 'Product unavailable'}</p>

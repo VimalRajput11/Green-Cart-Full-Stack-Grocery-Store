@@ -20,6 +20,7 @@ export const AppContextProvider = ({ children }) => {
     const [isSeller, setIsSeller] = useState(false);
     const [isAgent, setIsAgent] = useState(false);
     const [showUserLogin, setShowUserLogin] = useState(false);
+    const [authChecked, setAuthChecked] = useState(false); // true once the login check has finished
     const [products, setProducts] = useState([]);
     const [cartItems, setCartItems] = useState({});
     const [searchQuery, setSearchQuery] = useState("");
@@ -89,6 +90,8 @@ export const AppContextProvider = ({ children }) => {
             }
         } catch (error) {
             setUser(null);
+        } finally {
+            setAuthChecked(true);
         }
     }
 
@@ -249,7 +252,7 @@ export const AppContextProvider = ({ children }) => {
 
 
     const value = {
-        navigate, user, setUser, isSeller, setIsSeller, showUserLogin, setShowUserLogin, products,
+        navigate, user, setUser, authChecked, isSeller, setIsSeller, showUserLogin, setShowUserLogin, products,
         currency, addToCart, batchAddToCart, updateCartItem, removeFromCart, cartItems, searchQuery, setSearchQuery, getCartAmount,
         getCartCount, axios, fetchProducts, setCartItems, isAgent, setIsAgent, categories, getCategories: fetchCategories, confirmAction
     }

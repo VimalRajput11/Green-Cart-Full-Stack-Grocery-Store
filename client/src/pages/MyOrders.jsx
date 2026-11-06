@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAppContext } from '../context/AppContext';
 import { assets } from '../assets/assets';
+import { optimizeImg } from '../utils/image';
 import {
   STATUS, TRACK_STEPS, stepIndex, STATUS_STYLE, CUSTOMER_HEADLINE, PRE_PICKUP, ACTIVE, FINAL, shortId,
 } from '../utils/orderStatus';
@@ -93,7 +94,7 @@ const ActiveOrder = ({ order, onCancel }) => {
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {order.items.map((it, i) => (
             <div key={i} className="relative w-14 h-14 shrink-0 rounded-xl border border-gray-100 bg-gray-50 p-1.5">
-              <img src={it.product?.image?.[0] || assets.box_icon} alt={it.product?.name || ''} className="w-full h-full object-contain" />
+              <img src={optimizeImg(it.product?.image?.[0], 120) || assets.box_icon} alt={it.product?.name || ''} className="w-full h-full object-contain" />
               {it.quantity > 1 && <span className="absolute -top-1.5 -right-1.5 text-[10px] font-bold bg-gray-900 text-white rounded-full w-5 h-5 flex items-center justify-center">{it.quantity}</span>}
             </div>
           ))}
@@ -111,7 +112,7 @@ const PastOrder = ({ order, onRemove }) => {
       <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center gap-4 p-4 text-left" aria-expanded={open}>
         <div className="flex -space-x-3">
           {order.items.slice(0, 3).map((it, i) => (
-            <img key={i} src={it.product?.image?.[0] || assets.box_icon} alt="" className="w-10 h-10 rounded-full border-2 border-white bg-gray-50 object-contain" />
+            <img key={i} src={optimizeImg(it.product?.image?.[0], 120) || assets.box_icon} alt="" className="w-10 h-10 rounded-full border-2 border-white bg-gray-50 object-contain" />
           ))}
         </div>
         <div className="flex-1 min-w-0">

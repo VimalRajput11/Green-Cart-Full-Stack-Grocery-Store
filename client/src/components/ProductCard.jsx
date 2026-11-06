@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { DELIVERY_ETA } from '../utils/orderStatus';
+import { optimizeImg } from '../utils/image';
 
 const etaShort = DELIVERY_ETA.replace(/minutes?/i, 'MINS').toUpperCase();
 
@@ -31,7 +32,7 @@ const ProductCard = ({ product }) => {
             <button onClick={open} className="block aspect-square w-full mb-2 overflow-hidden" aria-label={product.name}>
                 <img
                     className={`w-full h-full object-contain group-hover:scale-105 transition ${outOfStock ? 'grayscale opacity-60' : ''}`}
-                    src={product.image[0]}
+                    src={optimizeImg(product.image[0], 320)}
                     alt=""
                     loading="lazy"
                 />

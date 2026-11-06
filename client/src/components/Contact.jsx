@@ -23,7 +23,7 @@ const Contact = () => {
                 <div className="bg-primary p-10 md:p-12 text-white md:w-2/5 flex flex-col justify-between">
                     <div>
                         <h3 className="text-2xl font-bold mb-2">Get in touch</h3>
-                        <p className="opacity-90 leading-relaxed mb-8">Visit our farm or send us a message. We love hearing from our community.</p>
+                        <p className="opacity-90 leading-relaxed mb-8">Questions about an order, a refund or a product? Our support team is here to help.</p>
 
                         <div className="space-y-6">
                             <div className="flex items-start gap-4">
@@ -31,8 +31,8 @@ const Contact = () => {
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-lg">Our Location</h4>
-                                    <p className="opacity-80 text-sm mt-1">123 Organic Farms Lane,<br />Green Valley, CA 90210</p>
+                                    <h4 className="font-semibold text-lg">Track your order</h4>
+                                    <p className="opacity-80 text-sm mt-1">Live status, delivery OTP and<br />rider details in My Orders</p>
                                 </div>
                             </div>
 
@@ -42,7 +42,7 @@ const Contact = () => {
                                 </div>
                                 <div>
                                     <h4 className="font-semibold text-lg">Email Us</h4>
-                                    <p className="opacity-80 text-sm mt-1">support@greencart.com<br />careers@greencart.com</p>
+                                    <p className="opacity-80 text-sm mt-1">support@greencart.com</p>
                                 </div>
                             </div>
 
@@ -51,8 +51,8 @@ const Contact = () => {
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-lg">Call Us</h4>
-                                    <p className="opacity-80 text-sm mt-1">+1 (555) 123-4567<br />Mon-Fri, 9am - 6pm</p>
+                                    <h4 className="font-semibold text-lg">Support hours</h4>
+                                    <p className="opacity-80 text-sm mt-1">Every day, 7 AM – 11 PM</p>
                                 </div>
                             </div>
                         </div>

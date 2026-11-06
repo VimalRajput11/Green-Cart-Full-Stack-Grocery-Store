@@ -2,6 +2,7 @@ import Order from "../models/Order.js";
 import User from "../models/User.js";
 import Product from "../models/Product.js";
 import DeliveryAgent from "../models/DeliveryAgent.js";
+import Address from "../models/Address.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import {
@@ -21,6 +22,12 @@ const getRazorpay = () => {
 };
 
 const fail = (res, code, message) => res.status(code).json({ success: false, message });
+
+// The delivery address must belong to the customer placing the order
+const assertOwnAddress = async (addressId, userId) => {
+  const found = await Address.exists({ _id: addressId, userId });
+  if (!found) throw new Error("Please choose one of your saved delivery addresses");
+};
 
 // Validate every line before touching stock, and price it from the DB
 const priceItems = async (items) => {
@@ -71,6 +78,7 @@ export const addOrder = async (req, res) => {
   try {
     const { items, address } = req.body;
     if (!address || !items || items.length === 0) return fail(res, 400, "Address and items are required");
+    await assertOwnAddress(address, req.userId);
 
     const { lines, amount } = await priceItems(items);
     await takeStock(lines);
@@ -98,6 +106,7 @@ export const placeOrderRazorpay = async (req, res) => {
   try {
     const { items, address } = req.body;
     if (!address || !items || items.length === 0) return fail(res, 400, "Address and items are required");
+    await assertOwnAddress(address, req.userId);
 
     const { lines, amount } = await priceItems(items);
 

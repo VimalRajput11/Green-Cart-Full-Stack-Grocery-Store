@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAppContext } from '../../context/AppContext';
 import { STATUS, STATUS_STYLE, IN_TRANSIT, shortId, mapsLink, timeAgo } from '../../utils/orderStatus';
+import { optimizeImg } from '../../utils/image';
 
 const POLL_MS = 15000;
 
@@ -23,7 +24,7 @@ const ItemsList = ({ items }) => (
   <ul className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
     {items.map((it, i) => (
       <li key={i} className="flex items-center gap-3 px-3 py-2 bg-white">
-        <img src={it.product?.image?.[0]} alt="" className="w-9 h-9 object-contain bg-gray-50 rounded" />
+        <img src={optimizeImg(it.product?.image?.[0], 120)} alt="" className="w-9 h-9 object-contain bg-gray-50 rounded" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-800 truncate">{it.product?.name || 'Item'}</p>
           {it.product?.weight && <p className="text-[11px] text-gray-400">{it.product.weight}</p>}
