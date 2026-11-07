@@ -1,26 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import toast from 'react-hot-toast';
-import { assets } from '../../assets/assets';
 import ConfirmModal from '../../components/ConfirmModal';
 import { timeAgo } from '../../utils/orderStatus';
+import { Page, PageHeader, Card, StatCard, Badge, Avatar, Button, Field, EmptyState, Spinner, SearchInput, Icon, inputCls } from '../../components/Seller/ui';
 
 const VEHICLES = ['Bike', 'Scooter', 'Cycle', 'EV'];
 const EMPTY = { name: '', phone: '', password: '', vehicleType: 'Bike', vehicleNumber: '' };
 
 const statusOf = (a) => {
-  if (a.isBlocked) return { label: 'Blocked', cls: 'bg-red-50 border-red-100 text-red-700', dot: 'bg-red-500' };
-  if (a.status === 'On Delivery') return { label: 'On delivery', cls: 'bg-violet-50 border-violet-100 text-violet-700', dot: 'bg-violet-500' };
-  if (a.status === 'Available') return { label: 'Online', cls: 'bg-green-50 border-green-100 text-green-700', dot: 'bg-green-500' };
-  return { label: 'Offline', cls: 'bg-gray-50 border-gray-100 text-gray-500', dot: 'bg-gray-300' };
+  if (a.isBlocked) return { label: 'Blocked', tone: 'red', dot: 'bg-red-500', avatar: 'red' };
+  if (a.status === 'On Delivery') return { label: 'On delivery', tone: 'violet', dot: 'bg-violet-500', avatar: 'violet' };
+  if (a.status === 'Available') return { label: 'Online', tone: 'green', dot: 'bg-green-500', avatar: 'green' };
+  return { label: 'Offline', tone: 'slate', dot: 'bg-slate-300', avatar: 'slate' };
 };
-
-const Summary = ({ label, value, accent = 'text-gray-900' }) => (
-  <div className="bg-white p-5 rounded-3xl border border-gray-100/60 shadow-sm">
-    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">{label}</p>
-    <p className={`text-2xl font-bold tracking-tight ${accent}`}>{value}</p>
-  </div>
-);
 
 const SellerAgents = () => {
   const { axios, currency } = useAppContext();
@@ -121,165 +114,149 @@ const SellerAgents = () => {
     settle: { title: 'Settle cash', msg: (a) => `Confirm you received ${currency}${a.stats?.cashInHand} in cash from ${a.name} for ${a.stats?.cashOrders} order(s)?`, btn: 'Cash received' },
   };
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-[60vh]">
-      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary"></div>
-    </div>
-  );
-
-  const field = 'w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 focus:border-green-500/40 outline-none font-semibold text-gray-900 placeholder:text-gray-300';
+  if (loading) return <Spinner />;
 
   return (
-    <div className="p-4 md:p-8 bg-[#fcfcfc] min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-[-0.04em]">Delivery Fleet</h1>
-            <p className="text-gray-400 font-semibold mt-1 text-sm">Riders, live status, workload and cash settlement.</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => fetchAgents(true)}
-              disabled={refreshing}
-              className="bg-white text-gray-700 px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-sm flex items-center gap-2 border border-gray-100 disabled:opacity-50"
-            >
-              <img src={assets.refresh_icon} className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} alt="" />
-              {refreshing ? 'Syncing...' : 'Sync'}
-            </button>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className={`${showAddForm ? 'bg-gray-900' : 'bg-green-600'} text-white px-6 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2`}
-            >
-              {showAddForm ? '✕ Cancel' : '+ Add Rider'}
-            </button>
-          </div>
-        </div>
+    <Page>
+      <PageHeader
+        title="Delivery fleet"
+        subtitle="Riders, live status, workload and cash settlement."
+        actions={<>
+          <Button variant="secondary" icon="refresh" iconClass={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} disabled={refreshing} onClick={() => fetchAgents(true)}>
+            {refreshing ? 'Syncing…' : 'Refresh'}
+          </Button>
+          <Button variant={showAddForm ? 'secondary' : 'primary'} icon={showAddForm ? 'close' : 'plus'} onClick={() => setShowAddForm(!showAddForm)}>
+            {showAddForm ? 'Cancel' : 'Add rider'}
+          </Button>
+        </>}
+      />
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Summary label="Online now" value={`${summary.online} / ${agents.length}`} accent="text-green-700" />
-          <Summary label="On delivery" value={summary.onDelivery} accent="text-violet-700" />
-          <Summary label="Delivered today" value={summary.deliveriesToday} />
-          <Summary label="Cash with riders" value={`${currency}${summary.cashPending}`} accent={summary.cashPending > 0 ? 'text-orange-600' : 'text-gray-900'} />
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <StatCard label="Online now" value={<>{summary.online}<span className="text-slate-400 text-lg font-medium">/{agents.length}</span></>} icon="users" tone="green" hint="Available or on delivery" />
+        <StatCard label="On delivery" value={summary.onDelivery} icon="truck" tone="violet" hint="Currently out with orders" />
+        <StatCard label="Delivered today" value={summary.deliveriesToday} icon="check" tone="sky" hint="Across all riders" />
+        <StatCard label="Cash with riders" value={`${currency}${summary.cashPending}`} icon="money" tone={summary.cashPending > 0 ? 'orange' : 'slate'}
+          valueClass={summary.cashPending > 0 ? 'text-orange-600' : 'text-slate-900'} hint={summary.cashPending > 0 ? 'Collect and settle' : 'All settled'} />
+      </div>
 
-        <div className="relative mb-8">
-          <img src={assets.search_icon} className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" alt="" />
-          <input
-            type="text"
-            placeholder="Search by name, phone or vehicle number"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-6 py-4 rounded-2xl border border-gray-100 bg-white focus:outline-none focus:border-green-500/40 font-semibold text-gray-900 placeholder:text-gray-300 text-sm shadow-sm"
-          />
-        </div>
-
-        {showAddForm && (
-          <form onSubmit={addAgent} className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-xl mb-10">
-            <h2 className="text-lg font-bold text-gray-900 mb-6">New delivery partner</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Full name</span>
-                <input required className={field} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Ravi Kumar" />
-              </label>
-              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Phone (login ID)</span>
-                <input required inputMode="tel" className={field} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="10-digit mobile" />
-              </label>
-              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Temporary password</span>
-                <input required minLength={6} type="text" className={field} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 6 characters" />
-              </label>
-              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Vehicle</span>
-                <select className={field} value={form.vehicleType} onChange={(e) => setForm({ ...form, vehicleType: e.target.value })}>
-                  {VEHICLES.map((v) => <option key={v}>{v}</option>)}
-                </select>
-              </label>
-              <label className="space-y-2"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Vehicle number</span>
-                <input className={field} value={form.vehicleNumber} onChange={(e) => setForm({ ...form, vehicleNumber: e.target.value.toUpperCase() })} placeholder="e.g. DL 01 AB 1234" />
-              </label>
-              <div className="flex items-end">
-                <button className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-green-500/20 hover:bg-green-700 transition">Create rider</button>
-              </div>
+      {showAddForm && (
+        <Card title="New delivery partner" subtitle="They'll sign in to the rider app with this phone number and password." bodyClass="px-5 pb-5">
+          <form onSubmit={addAgent} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Field label="Full name">
+              <input required className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Ravi Kumar" />
+            </Field>
+            <Field label="Phone (login ID)">
+              <input required inputMode="tel" className={inputCls} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="10-digit mobile" />
+            </Field>
+            <Field label="Temporary password">
+              <input required minLength={6} type="text" className={inputCls} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 6 characters" />
+            </Field>
+            <Field label="Vehicle">
+              <select className={`${inputCls} cursor-pointer`} value={form.vehicleType} onChange={(e) => setForm({ ...form, vehicleType: e.target.value })}>
+                {VEHICLES.map((v) => <option key={v}>{v}</option>)}
+              </select>
+            </Field>
+            <Field label="Vehicle number">
+              <input className={inputCls} value={form.vehicleNumber} onChange={(e) => setForm({ ...form, vehicleNumber: e.target.value.toUpperCase() })} placeholder="e.g. DL 01 AB 1234" />
+            </Field>
+            <div className="flex items-end">
+              <Button type="submit" icon="check" className="w-full">Create rider</Button>
             </div>
           </form>
-        )}
+        </Card>
+      )}
 
-        {filtered.length === 0 ? (
-          <div className="text-center py-24 bg-white rounded-[2.5rem] border-2 border-dashed border-gray-100">
-            <h3 className="text-lg font-bold text-gray-400 uppercase tracking-widest">No riders found</h3>
-            <p className="text-gray-300 font-semibold mt-2">Add your first delivery partner to start dispatching.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filtered.map((agent) => {
-              const st = statusOf(agent);
-              const s = agent.stats || {};
-              const busy = busyId === agent._id;
-              return (
-                <div key={agent._id} className="bg-white rounded-[2rem] border border-gray-100/60 shadow-sm hover:shadow-xl transition-all p-6 flex flex-col gap-5">
-                  <div className="flex items-start gap-4">
-                    <div className="relative">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold uppercase text-white ${agent.isBlocked ? 'bg-red-400' : agent.status === 'Inactive' ? 'bg-gray-400' : 'bg-green-600'}`}>
-                        {agent.name.slice(0, 2)}
-                      </div>
-                      <span className={`absolute -right-1 -bottom-1 w-4 h-4 rounded-full border-2 border-white ${st.dot}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold text-gray-900 truncate">{agent.name}</h3>
-                      <p className="text-xs font-semibold text-gray-400">{agent.phone}</p>
-                      <p className="text-xs font-semibold text-gray-500 mt-0.5">
-                        {agent.vehicleType}{agent.vehicleNumber ? ` · ${agent.vehicleNumber}` : ''}
-                        <button onClick={() => editVehicle(agent)} className="ml-2 text-green-700 hover:underline">edit</button>
-                      </p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${st.cls}`}>{st.label}</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-gray-50 rounded-xl py-2"><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Active</p><p className="font-bold text-gray-900">{s.activeOrders ?? 0}</p></div>
-                    <div className="bg-gray-50 rounded-xl py-2"><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Today</p><p className="font-bold text-gray-900">{s.todayDeliveries ?? 0}</p></div>
-                    <div className={`rounded-xl py-2 ${s.cashInHand > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}><p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Cash held</p><p className={`font-bold ${s.cashInHand > 0 ? 'text-orange-600' : 'text-gray-900'}`}>{currency}{s.cashInHand ?? 0}</p></div>
-                  </div>
-
-                  <p className="text-[11px] text-gray-400 font-semibold -mt-2">
-                    Last active {agent.lastSeenAt ? timeAgo(agent.lastSeenAt) : 'never'} · {s.totalDeliveries ?? 0} lifetime deliveries
-                    {agent.currentLocation?.lat && (
-                      <> · <a className="text-blue-600 hover:underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${agent.currentLocation.lat},${agent.currentLocation.lng}`}>location</a></>
-                    )}
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-2 mt-auto">
-                    <a href={`tel:${agent.phone}`} className="py-2.5 text-center rounded-xl border border-gray-100 text-xs font-bold text-gray-700 hover:border-green-200">Call</a>
-                    {s.cashInHand > 0 ? (
-                      <button disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'settle' })} className="py-2.5 rounded-xl bg-orange-500 text-white text-xs font-bold disabled:opacity-50">Settle {currency}{s.cashInHand}</button>
-                    ) : (
-                      <button disabled={busy} onClick={() => resetPassword(agent)} className="py-2.5 rounded-xl border border-gray-100 text-xs font-bold text-gray-700 hover:border-gray-300 disabled:opacity-50">Reset password</button>
-                    )}
-                    <button disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'block' })} className={`py-2.5 rounded-xl text-xs font-bold disabled:opacity-50 ${agent.isBlocked ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-600'}`}>
-                      {agent.isBlocked ? 'Unblock' : 'Block'}
-                    </button>
-                    <button disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'delete' })} className="py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold disabled:opacity-50">Delete</button>
-                  </div>
-                  {s.cashInHand > 0 && (
-                    <button disabled={busy} onClick={() => resetPassword(agent)} className="text-[11px] font-semibold text-gray-400 hover:text-gray-700 -mt-2">Reset password</button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {confirmModal.agent && (
-          <ConfirmModal
-            isOpen={confirmModal.isOpen}
-            onClose={() => setConfirmModal({ isOpen: false, agent: null, kind: null })}
-            onConfirm={onConfirm}
-            title={modalText[confirmModal.kind].title}
-            message={modalText[confirmModal.kind].msg(confirmModal.agent)}
-            confirmText={modalText[confirmModal.kind].btn}
-            cancelText="Cancel"
-            type={confirmModal.kind === 'settle' ? 'success' : 'danger'}
-          />
-        )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm text-slate-500"><span className="font-semibold text-slate-900">{filtered.length}</span> rider{filtered.length === 1 ? '' : 's'}</p>
+        <SearchInput className="w-full sm:w-80" placeholder="Search name, phone or vehicle number" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
-    </div>
+
+      {filtered.length === 0 ? (
+        <Card>
+          <EmptyState icon="truck" title={agents.length ? 'No riders found' : 'No riders yet'}
+            text={agents.length ? 'Try a different search.' : 'Add your first delivery partner to start dispatching.'}
+            action={!agents.length && <Button size="sm" icon="plus" onClick={() => setShowAddForm(true)}>Add rider</Button>} />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((agent) => {
+            const st = statusOf(agent);
+            const s = agent.stats || {};
+            const busy = busyId === agent._id;
+            return (
+              <div key={agent._id} className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-md hover:border-slate-300/80 transition-all flex flex-col">
+                <div className="p-5 flex items-start gap-3.5">
+                  <div className="relative">
+                    <Avatar name={agent.name} size="lg" tone={st.avatar} />
+                    <span className={`absolute -right-0.5 -bottom-0.5 w-3.5 h-3.5 rounded-full ring-2 ring-white ${st.dot}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-[15px] font-semibold text-slate-900 truncate">{agent.name}</h3>
+                      <Badge tone={st.tone} dot>{st.label}</Badge>
+                    </div>
+                    <p className="text-sm text-slate-500">{agent.phone}</p>
+                    <button onClick={() => editVehicle(agent)} className="group/v mt-1 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-green-700" title="Edit vehicle number">
+                      <Icon name="truck" className="w-3.5 h-3.5" />
+                      {agent.vehicleType}{agent.vehicleNumber ? ` · ${agent.vehicleNumber}` : ''}
+                      <Icon name="pencil" className="w-3 h-3 opacity-0 group-hover/v:opacity-100" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mx-5 grid grid-cols-3 rounded-xl ring-1 ring-inset ring-slate-100 bg-slate-50/70 divide-x divide-slate-100 text-center">
+                  <div className="py-2.5"><p className="text-[11px] text-slate-500">Active</p><p className="font-semibold text-slate-900 tabular-nums">{s.activeOrders ?? 0}</p></div>
+                  <div className="py-2.5"><p className="text-[11px] text-slate-500">Today</p><p className="font-semibold text-slate-900 tabular-nums">{s.todayDeliveries ?? 0}</p></div>
+                  <div className="py-2.5"><p className="text-[11px] text-slate-500">Cash held</p><p className={`font-semibold tabular-nums ${s.cashInHand > 0 ? 'text-orange-600' : 'text-slate-900'}`}>{currency}{s.cashInHand ?? 0}</p></div>
+                </div>
+
+                <p className="px-5 mt-3 text-xs text-slate-500 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <Icon name="clock" className="w-3.5 h-3.5 text-slate-400" />
+                  Active {agent.lastSeenAt ? timeAgo(agent.lastSeenAt) : 'never'}
+                  <span className="text-slate-300">·</span>{s.totalDeliveries ?? 0} lifetime
+                  {agent.currentLocation?.lat && (
+                    <><span className="text-slate-300">·</span>
+                      <a className="inline-flex items-center gap-0.5 text-green-700 font-medium hover:text-green-800" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${agent.currentLocation.lat},${agent.currentLocation.lng}`}>
+                        <Icon name="pin" className="w-3.5 h-3.5" />Location
+                      </a></>
+                  )}
+                </p>
+
+                <div className="mt-auto p-5 pt-4 space-y-2">
+                  {s.cashInHand > 0 && (
+                    <Button variant="warning" icon="money" className="w-full" disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'settle' })}>
+                      Settle {currency}{s.cashInHand}
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <a href={`tel:${agent.phone}`} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition">
+                      <Icon name="phone" className="w-4 h-4" strokeWidth={2} /> Call
+                    </a>
+                    <Button variant="secondary" size="icon" icon="key" disabled={busy} onClick={() => resetPassword(agent)} title="Reset password" aria-label="Reset password" />
+                    <Button variant={agent.isBlocked ? 'soft' : 'secondary'} size="icon" icon={agent.isBlocked ? 'check' : 'ban'} disabled={busy}
+                      onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'block' })} title={agent.isBlocked ? 'Unblock' : 'Block'} aria-label={agent.isBlocked ? 'Unblock' : 'Block'} />
+                    <Button variant="danger-soft" size="icon" icon="trash" disabled={busy} onClick={() => setConfirmModal({ isOpen: true, agent, kind: 'delete' })} title="Delete rider" aria-label="Delete rider" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {confirmModal.agent && (
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ isOpen: false, agent: null, kind: null })}
+          onConfirm={onConfirm}
+          title={modalText[confirmModal.kind].title}
+          message={modalText[confirmModal.kind].msg(confirmModal.agent)}
+          confirmText={modalText[confirmModal.kind].btn}
+          cancelText="Cancel"
+          type={confirmModal.kind === 'settle' ? 'success' : 'danger'}
+        />
+      )}
+    </Page>
   );
 };
 

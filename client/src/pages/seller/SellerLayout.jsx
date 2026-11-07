@@ -1,29 +1,29 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { assets } from '../../assets/assets';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-
-const I = ({ d }) => (
-  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
-);
+import { Icon } from '../../components/Seller/ui';
 
 const NAV = [
   { section: 'Store', items: [
-    { name: 'Overview', path: '/seller', end: true, icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { name: 'Orders', path: '/seller/orders', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
-    { name: 'Delivery fleet', path: '/seller/agents', icon: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h2m8 0h2m-2 0H9m10 0h1a1 1 0 001-1v-3.65a1 1 0 00-.22-.62l-3.48-4.35A1 1 0 0016.52 6H13M9 17a2 2 0 11-4 0 2 2 0 014 0zm10 0a2 2 0 11-4 0 2 2 0 014 0z' },
+    { name: 'Overview', path: '/seller', end: true, icon: 'home' },
+    { name: 'Orders', path: '/seller/orders', icon: 'orders' },
+    { name: 'Delivery fleet', path: '/seller/agents', icon: 'truck' },
   ] },
   { section: 'Catalogue', items: [
-    { name: 'Products', path: '/seller/product-list', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-    { name: 'Add product', path: '/seller/add-product', icon: 'M12 4v16m8-8H4' },
-    { name: 'Categories', path: '/seller/add-category', icon: 'M4 6h16M4 12h16M4 18h7' },
+    { name: 'Products', path: '/seller/product-list', icon: 'box' },
+    { name: 'Add product', path: '/seller/add-product', icon: 'plus' },
+    { name: 'Categories', path: '/seller/add-category', icon: 'tag' },
   ] },
 ];
 
 const SellerLayout = () => {
   const { navigate, axios, setIsSeller } = useAppContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { pathname } = useLocation();
+
+  const current = NAV.flatMap((g) => g.items).find((i) => (i.end ? pathname === i.path : pathname.startsWith(i.path)));
 
   const logout = async () => {
     try {
@@ -41,45 +41,51 @@ const SellerLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f8fa] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Mobile header */}
-      <header className="md:hidden sticky top-0 z-[60] flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
+      <header className="md:hidden sticky top-0 z-[60] flex items-center justify-between px-4 h-14 bg-white/90 backdrop-blur border-b border-slate-200/80">
         <Link to="/seller" className="flex items-center gap-2">
           <img className="h-7" src={assets.logo} alt="GreenCart" />
-          <span className="text-[10px] font-bold text-green-700 bg-green-50 rounded px-1.5 py-0.5 uppercase tracking-wider">Seller</span>
+          <span className="text-[10px] font-semibold text-green-700 bg-green-50 ring-1 ring-inset ring-green-600/15 rounded-md px-1.5 py-0.5">Seller</span>
         </Link>
-        <button onClick={() => setSidebarOpen((o) => !o)} aria-label="Menu" className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-800">
-          <I d={sidebarOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
-        </button>
+        <div className="flex items-center gap-2">
+          {current && <span className="text-sm font-medium text-slate-500">{current.name}</span>}
+          <button onClick={() => setSidebarOpen((o) => !o)} aria-label="Menu" className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-700 bg-white">
+            <Icon name={sidebarOpen ? 'close' : 'menu'} className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Sidebar */}
-      <aside className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-white border-r border-gray-100 flex flex-col z-[100] transition-transform duration-300
+      <aside className={`fixed md:sticky top-0 left-0 h-screen w-[264px] bg-white border-r border-slate-200/80 flex flex-col z-[100] transition-transform duration-300
         ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="px-6 pt-6 pb-5 border-b border-gray-100">
-          <Link to="/seller" onClick={() => setSidebarOpen(false)} className="block">
+        <div className="px-5 h-[72px] flex items-center border-b border-slate-100">
+          <Link to="/seller" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5">
             <img className="h-8" src={assets.logo} alt="GreenCart" />
-            <span className="block text-[10px] font-bold text-green-700 uppercase tracking-[0.25em] mt-1.5">Seller central</span>
+            <span className="text-[10px] font-semibold text-green-700 bg-green-50 ring-1 ring-inset ring-green-600/15 rounded-md px-1.5 py-0.5 mt-1">Seller</span>
           </Link>
         </div>
 
-        <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-4 space-y-6">
+        <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-5 space-y-7">
           {NAV.map((group) => (
             <div key={group.section}>
-              <p className="px-3 mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{group.section}</p>
-              <div className="space-y-1">
+              <p className="px-3 mb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-[0.08em]">{group.section}</p>
+              <div className="space-y-0.5">
                 {group.items.map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
                     end={item.end}
                     onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition
-                      ${isActive ? 'bg-green-50 text-green-800' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                    className={({ isActive }) => `group relative flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-colors
+                      ${isActive ? 'bg-green-50 text-green-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
                   >
                     {({ isActive }) => (
                       <>
-                        <span className={isActive ? 'text-green-700' : 'text-gray-400'}><I d={item.icon} /></span>
+                        {isActive && <span className="absolute -left-3 top-2 bottom-2 w-1 rounded-r-full bg-green-600" />}
+                        <span className={`transition-colors ${isActive ? 'text-green-700' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                          <Icon name={item.icon} className="w-[19px] h-[19px]" />
+                        </span>
                         {item.name}
                       </>
                     )}
@@ -90,19 +96,19 @@ const SellerLayout = () => {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-gray-100 space-y-1">
-          <Link to="/" target="_blank" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
-            <span className="text-gray-400"><I d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></span>
-            View store
+        <div className="p-3 border-t border-slate-100 space-y-0.5">
+          <Link to="/" target="_blank" className="group flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+            <span className="text-slate-400 group-hover:text-slate-600"><Icon name="external" className="w-[19px] h-[19px]" /></span>
+            View storefront
           </Link>
-          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50">
-            <I d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <button onClick={logout} className="group w-full flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-700">
+            <span className="text-slate-400 group-hover:text-red-600"><Icon name="logout" className="w-[19px] h-[19px]" /></span>
             Sign out
           </button>
         </div>
       </aside>
 
-      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-gray-900/40 z-[90] md:hidden" />}
+      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[90] md:hidden" />}
 
       <main className="flex-1 min-w-0 md:h-screen overflow-y-auto">
         <Outlet />

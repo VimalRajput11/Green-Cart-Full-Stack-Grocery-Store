@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAppContext } from '../../context/AppContext';
 import { STATUS, STATUS_STYLE, PRE_PICKUP, IN_TRANSIT, shortId } from '../../utils/orderStatus';
 import { optimizeImg } from '../../utils/image';
+import { Page, PageHeader, Card, StatCard, Badge, Avatar, Button, EmptyState, Spinner, LivePill, Icon } from '../../components/Seller/ui';
 
 const POLL_MS = 15000;
 const PACK_SLA_MIN = 10; // new orders should be packed within this many minutes
@@ -13,33 +14,6 @@ const minutesSince = (d) => Math.max(0, Math.round((Date.now() - new Date(d).get
 const STALE_MIN = 24 * 60; // orders older than a day are treated as stale, not urgent
 const ageLabel = (m, date) => (m < 60 ? `${m}m` : m < STALE_MIN ? `${Math.floor(m / 60)}h ${m % 60}m` : new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }));
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-const Card = ({ title, action, children, className = '' }) => (
-  <section className={`bg-white rounded-2xl border border-gray-100 shadow-sm ${className}`}>
-    {(title || action) && (
-      <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <h2 className="text-sm font-bold text-gray-900">{title}</h2>
-        {action}
-      </div>
-    )}
-    {children}
-  </section>
-);
-
-const Kpi = ({ label, value, sub, tone = 'text-gray-900', icon, accent }) => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start justify-between gap-3">
-    <div className="min-w-0">
-      <p className="text-xs font-semibold text-gray-500">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${tone}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1 truncate">{sub}</p>}
-    </div>
-    <span className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${accent}`}>{icon}</span>
-  </div>
-);
-
-const Icon = ({ d }) => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
-);
 
 const SellerDashboard = () => {
   const { currency, axios, products } = useAppContext();
@@ -146,167 +120,173 @@ const SellerDashboard = () => {
     };
   }, [orders, agents, products]);
 
-  if (!loaded) {
-    return (
-      <div className="flex justify-center items-center h-[70vh]">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-600" />
-      </div>
-    );
-  }
+  if (!loaded) return <Spinner className="h-[70vh]" />;
 
   const maxRev = Math.max(1, ...m.days.map((d) => d.revenue));
   const pipeline = [
-    { label: 'New', value: m.toPack.length, cls: 'bg-amber-500', filter: 'New' },
-    { label: 'Needs rider', value: m.needRider.length, cls: 'bg-orange-500', filter: 'Packed' },
-    { label: 'Awaiting pickup', value: m.awaitingPickup.length, cls: 'bg-sky-500', filter: 'Packed' },
-    { label: 'In transit', value: m.inTransit.length, cls: 'bg-violet-500', filter: 'In Transit' },
-    { label: 'Delivered today', value: m.deliveredToday.length, cls: 'bg-green-600', filter: 'Delivered' },
-    { label: 'Failed today', value: m.failed.length, cls: 'bg-red-500', filter: 'Failed' },
+    { label: 'New', value: m.toPack.length, bar: 'bg-amber-500' },
+    { label: 'Needs rider', value: m.needRider.length, bar: 'bg-orange-500' },
+    { label: 'Awaiting pickup', value: m.awaitingPickup.length, bar: 'bg-sky-500' },
+    { label: 'In transit', value: m.inTransit.length, bar: 'bg-violet-500' },
+    { label: 'Delivered today', value: m.deliveredToday.length, bar: 'bg-green-600' },
+    { label: 'Failed today', value: m.failed.length, bar: 'bg-red-500' },
   ];
   const pipeMax = Math.max(1, ...pipeline.map((p) => p.value));
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const linkBtn = (label, to) => (
+    <button onClick={() => navigate(to)} className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 hover:text-green-800">
+      {label} <Icon name="chevronRight" className="w-3.5 h-3.5" strokeWidth={2.2} />
+    </button>
+  );
 
   return (
-    <div className="p-4 md:p-8 bg-[#f7f8fa] min-h-full space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <p className="text-sm text-gray-500">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Store overview</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1.5">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Live · updates every 15s
-          </span>
-          <button onClick={() => navigate('/seller/orders')} className="text-sm font-semibold bg-gray-900 text-white rounded-xl px-4 py-2 hover:bg-black">
-            Open orders
-          </button>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        eyebrow={new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+        title={`${greeting} 👋`}
+        subtitle="Here's what's happening in your store right now."
+        actions={<>
+          <LivePill>Live · every 15s</LivePill>
+          <Button variant="dark" icon="orders" onClick={() => navigate('/seller/orders')}>Open orders</Button>
+        </>}
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
-        <Kpi
+        <StatCard
           label="Revenue today"
           value={`${currency}${Math.round(m.revToday).toLocaleString()}`}
-          sub={m.change === null ? 'No sales yesterday to compare' : `${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change)}% vs yesterday`}
-          tone="text-gray-900"
-          accent="bg-green-50 text-green-700"
-          icon={<Icon d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8c1.11 0 2.08.4 2.6 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.4-2.6-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
+          hint={m.change === null ? 'No sales yesterday to compare' : `${m.change >= 0 ? '▲' : '▼'} ${Math.abs(m.change)}% vs yesterday`}
+          hintClass={m.change === null ? 'text-slate-500' : m.change >= 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}
+          icon="money"
+          tone="green"
         />
-        <Kpi
+        <StatCard
           label="Orders today"
           value={m.todayOrders.length}
-          sub={`${m.deliveredToday.length} delivered · ${m.inTransit.length} on the way`}
-          accent="bg-sky-50 text-sky-700"
-          icon={<Icon d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />}
+          hint={`${m.deliveredToday.length} delivered · ${m.inTransit.length} on the way`}
+          icon="orders"
+          tone="sky"
         />
-        <Kpi
+        <StatCard
           label="Needs your action"
           value={m.needsAction}
-          sub={m.overdue.length ? `${m.overdue.length} waiting over ${PACK_SLA_MIN} min` : 'Packing on time'}
-          tone={m.overdue.length ? 'text-red-600' : 'text-gray-900'}
-          accent={m.overdue.length ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}
-          icon={<Icon d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />}
+          hint={m.overdue.length ? `${m.overdue.length} waiting over ${PACK_SLA_MIN} min` : 'Packing on time'}
+          valueClass={m.overdue.length ? 'text-red-600' : 'text-slate-900'}
+          hintClass={m.overdue.length ? 'text-red-600 font-medium' : 'text-slate-500'}
+          icon="clock"
+          tone={m.overdue.length ? 'red' : 'amber'}
         />
-        <Kpi
+        <StatCard
           label="Riders online"
-          value={`${m.online.length}/${agents.length}`}
-          sub={`${m.busy.length} on delivery · ${currency}${m.cashWithRiders} cash held`}
-          accent="bg-violet-50 text-violet-700"
-          icon={<Icon d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h2m8 0h2m-2 0H9m10 0h1a1 1 0 001-1v-3.65a1 1 0 00-.22-.62l-3.48-4.35A1 1 0 0016.52 6H13M9 17a2 2 0 11-4 0 2 2 0 014 0zm10 0a2 2 0 11-4 0 2 2 0 014 0z" />}
+          value={<>{m.online.length}<span className="text-slate-400 text-lg font-medium">/{agents.length}</span></>}
+          hint={`${m.busy.length} on delivery · ${currency}${m.cashWithRiders} cash held`}
+          icon="truck"
+          tone="violet"
         />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
-        {/* Action queue */}
+        {/* Packing queue */}
         <Card
           className="xl:col-span-2"
-          title={`To pack · ${m.toPack.length}`}
-          action={<button onClick={() => navigate('/seller/orders')} className="text-xs font-semibold text-green-700 hover:underline">All orders</button>}
+          title={<span className="flex items-center gap-2">Packing queue <Badge tone={m.toPack.length ? 'amber' : 'slate'}>{m.toPack.length}</Badge></span>}
+          subtitle={`Pack new orders within ${PACK_SLA_MIN} minutes`}
+          action={linkBtn('All orders', '/seller/orders')}
         >
           {m.toPack.length === 0 ? (
-            <p className="px-5 pb-6 text-sm text-gray-500">No new orders waiting. 🎉</p>
+            <EmptyState icon="check" title="All caught up" text="No new orders waiting to be packed." />
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="border-t border-slate-100 divide-y divide-slate-100">
               {m.toPack.slice(0, 6).map((o) => {
                 const age = minutesSince(o.createdAt);
                 const stale = age >= STALE_MIN;
                 const late = !stale && age > PACK_SLA_MIN;
                 const units = o.items.reduce((n, i) => n + i.quantity, 0);
                 return (
-                  <li key={o._id} className={`flex items-center gap-3 px-5 py-3 ${stale ? 'bg-gray-50/60' : ''}`}>
+                  <li key={o._id} className={`flex items-center gap-3 px-5 py-3 transition-colors hover:bg-slate-50/70 ${stale ? 'bg-slate-50/60' : ''}`}>
                     <span
                       title={`Placed ${new Date(o.createdAt).toLocaleString()}`}
-                      className={`w-16 shrink-0 text-center text-xs font-bold rounded-lg py-1 ${stale ? 'bg-gray-200 text-gray-500' : late ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}
+                      className={`w-[68px] shrink-0 inline-flex items-center justify-center gap-1 text-xs font-semibold rounded-lg py-1.5 ring-1 ring-inset tabular-nums ${stale ? 'bg-slate-100 text-slate-500 ring-slate-500/10' : late ? 'bg-red-50 text-red-700 ring-red-600/15' : 'bg-green-50 text-green-700 ring-green-600/15'}`}
                     >
+                      {!stale && <Icon name="clock" className="w-3 h-3" strokeWidth={2.2} />}
                       {ageLabel(age, o.createdAt)}
                     </span>
                     {/* fixed width so order details line up whatever the item count */}
-                    <div className="hidden sm:block relative w-[72px] h-9 shrink-0">
+                    <div className="hidden sm:block relative w-[76px] h-9 shrink-0">
                       {o.items.slice(0, o.items.length > 3 ? 2 : 3).map((it, i) => (
-                        <img key={i} src={optimizeImg(it.product?.image?.[0], 80)} alt="" style={{ left: `${i * 18}px` }} className="absolute top-0 w-9 h-9 rounded-full border-2 border-white bg-gray-50 object-contain" />
+                        <img key={i} src={optimizeImg(it.product?.image?.[0], 80)} alt="" style={{ left: `${i * 20}px` }} className="absolute top-0 w-9 h-9 rounded-full ring-2 ring-white bg-slate-50 object-contain p-0.5" />
                       ))}
                       {o.items.length > 3 && (
-                        <span className="absolute top-0 left-[36px] w-9 h-9 rounded-full border-2 border-white bg-gray-100 text-[10px] font-bold text-gray-600 flex items-center justify-center">+{o.items.length - 2}</span>
+                        <span className="absolute top-0 left-[40px] w-9 h-9 rounded-full ring-2 ring-white bg-slate-100 text-[10px] font-semibold text-slate-600 flex items-center justify-center">+{o.items.length - 2}</span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">#{shortId(o._id)} · {o.address?.firstName} {o.address?.lastName}</p>
-                      <p className="text-xs text-gray-500 truncate">{plural(units, 'item')} · {currency}{o.amount} · {o.paymentType === 'COD' ? 'Cash on delivery' : 'Paid online'}</p>
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        <span className="text-slate-400 font-medium">#{shortId(o._id)}</span> · {o.address?.firstName} {o.address?.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{plural(units, 'item')} · {currency}{o.amount} · {o.paymentType === 'COD' ? 'Cash on delivery' : 'Paid online'}</p>
                     </div>
-                    <button
-                      disabled={busyId === o._id}
-                      onClick={() => markPacked(o._id)}
-                      className="shrink-0 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-2 disabled:opacity-50"
-                    >
-                      {busyId === o._id ? '…' : 'Mark packed'}
-                    </button>
+                    <Button size="sm" icon="check" loading={busyId === o._id} onClick={() => markPacked(o._id)}>
+                      <span className="hidden sm:inline">Mark packed</span><span className="sm:hidden">Packed</span>
+                    </Button>
                   </li>
                 );
               })}
             </ul>
           )}
-          {m.toPack.length > 6 && (
-            <button onClick={() => navigate('/seller/orders')} className="mx-5 mt-1 text-xs font-semibold text-green-700 hover:underline">
-              + {m.toPack.length - 6} more to pack
-            </button>
-          )}
-          {m.staleToPack.length > 0 && (
-            <div className={`mx-5 mt-3 ${m.needRider.length ? "" : "mb-5"} flex items-center justify-between gap-3 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3`}>
-              <p className="text-sm text-gray-700">
-                <span className="font-bold">{plural(m.staleToPack.length, 'order')}</span> older than a day still not packed. Pack them or cancel with a reason.
-              </p>
-              <button onClick={() => navigate('/seller/orders')} className="shrink-0 text-xs font-bold text-gray-800 underline">Review</button>
-            </div>
-          )}
-          {m.needRider.length > 0 && (
-            <div className="mx-5 mb-5 mt-3 flex items-center justify-between gap-3 rounded-xl bg-orange-50 border border-orange-100 px-4 py-3">
-              <p className="text-sm text-orange-800"><span className="font-bold">{plural(m.needRider.length, 'order')}</span> waiting for a rider{m.online.length === 0 ? ' — no riders online' : ''}</p>
-              <button onClick={() => navigate('/seller/orders')} className="text-xs font-bold text-orange-800 underline">Assign</button>
+          {(m.toPack.length > 6 || m.staleToPack.length > 0 || m.needRider.length > 0) && (
+            <div className="px-5 pb-5 pt-3 space-y-2.5 border-t border-slate-100">
+              {m.toPack.length > 6 && (
+                <button onClick={() => navigate('/seller/orders')} className="text-xs font-semibold text-green-700 hover:text-green-800">
+                  + {m.toPack.length - 6} more to pack
+                </button>
+              )}
+              {m.staleToPack.length > 0 && (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-200 px-4 py-3">
+                  <p className="text-sm text-slate-700">
+                    <span className="font-semibold">{plural(m.staleToPack.length, 'order')}</span> older than a day still not packed. Pack them or cancel with a reason.
+                  </p>
+                  <Button size="sm" variant="secondary" onClick={() => navigate('/seller/orders')}>Review</Button>
+                </div>
+              )}
+              {m.needRider.length > 0 && (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-orange-50 ring-1 ring-inset ring-orange-200 px-4 py-3">
+                  <p className="text-sm text-orange-900 flex items-center gap-2">
+                    <Icon name="truck" className="w-4 h-4 text-orange-600" />
+                    <span><span className="font-semibold">{plural(m.needRider.length, 'order')}</span> waiting for a rider{m.online.length === 0 ? ' — no riders online' : ''}</span>
+                  </p>
+                  <Button size="sm" variant="warning" onClick={() => navigate('/seller/orders')}>Assign</Button>
+                </div>
+              )}
             </div>
           )}
         </Card>
 
         {/* Pipeline */}
-        <Card title="Live pipeline">
-          <ul className="px-5 pb-5 space-y-3">
+        <Card title="Live pipeline" subtitle="Orders by stage right now" action={linkBtn('Orders', '/seller/orders')}>
+          <ul className="px-5 pb-5 space-y-3.5">
             {pipeline.map((p) => (
               <li key={p.label}>
                 <button onClick={() => navigate('/seller/orders')} className="w-full text-left group">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600 group-hover:text-gray-900">{p.label}</span>
-                    <span className="font-bold text-gray-900">{p.value}</span>
+                  <div className="flex items-center justify-between text-sm mb-1.5">
+                    <span className="flex items-center gap-2 text-slate-600 group-hover:text-slate-900">
+                      <span className={`w-2 h-2 rounded-full ${p.bar}`} />{p.label}
+                    </span>
+                    <span className="font-semibold text-slate-900 tabular-nums">{p.value}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                    <div className={`h-full rounded-full ${p.cls}`} style={{ width: `${(p.value / pipeMax) * 100}%` }} />
+                  <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div className={`h-full rounded-full ${p.bar} transition-all duration-500`} style={{ width: `${(p.value / pipeMax) * 100}%` }} />
                   </div>
                 </button>
               </li>
             ))}
           </ul>
           {m.refunds.length > 0 && (
-            <div className="mx-5 mb-5 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
-              <span className="font-bold">{m.refunds.length}</span> refund{m.refunds.length > 1 ? 's' : ''} pending
+            <div className="mx-5 mb-5 flex items-center gap-2 rounded-xl bg-red-50 ring-1 ring-inset ring-red-200 px-4 py-3 text-sm text-red-800">
+              <Icon name="alert" className="w-4 h-4 text-red-600" />
+              <span><span className="font-semibold">{m.refunds.length}</span> refund{m.refunds.length > 1 ? 's' : ''} pending</span>
             </div>
           )}
         </Card>
@@ -314,54 +294,63 @@ const SellerDashboard = () => {
         {/* Revenue chart */}
         <Card
           className="xl:col-span-2"
-          title="Last 7 days"
-          action={<span className="text-xs text-gray-500">{currency}{Math.round(m.weekRevenue).toLocaleString()} · {m.weekOrders} orders</span>}
+          title="Revenue · last 7 days"
+          subtitle={`${m.weekOrders} orders this week`}
+          action={<span className="text-xl font-semibold text-slate-900 tabular-nums">{currency}{Math.round(m.weekRevenue).toLocaleString()}</span>}
         >
           <div className="px-5 pb-5">
-            <div className="h-44 flex items-end gap-2 sm:gap-4">
-              {m.days.map((d, i) => (
-                <div key={d.key} className="flex-1 h-full flex flex-col justify-end items-center gap-1.5 group">
-                  <span className="text-[10px] font-semibold text-gray-500 opacity-0 group-hover:opacity-100 transition">{currency}{Math.round(d.revenue)}</span>
-                  <div
-                    className={`w-full max-w-[44px] rounded-t-lg ${i === 6 ? 'bg-green-600' : 'bg-green-200 group-hover:bg-green-300'} transition-colors`}
-                    style={{ height: `${Math.max(3, (d.revenue / maxRev) * 100)}%` }}
-                    title={`${d.label}: ${currency}${Math.round(d.revenue)} from ${d.count} orders`}
-                  />
-                  <span className={`text-xs ${i === 6 ? 'font-bold text-gray-900' : 'text-gray-500'}`}>{i === 6 ? 'Today' : d.label}</span>
-                </div>
-              ))}
+            <div className="relative h-52">
+              {/* gridlines */}
+              <div className="absolute inset-x-0 top-6 bottom-7 flex flex-col justify-between pointer-events-none">
+                {[0, 1, 2, 3].map((i) => <div key={i} className="border-t border-dashed border-slate-100" />)}
+              </div>
+              <div className="relative h-full flex items-end gap-2 sm:gap-4">
+                {m.days.map((d, i) => {
+                  const today = i === 6;
+                  return (
+                    <div key={d.key} className="flex-1 h-full flex flex-col justify-end items-center gap-2 group">
+                      <span className={`text-[11px] font-semibold tabular-nums transition ${today ? 'text-green-700' : 'text-slate-500 opacity-0 group-hover:opacity-100'}`}>
+                        {currency}{Math.round(d.revenue).toLocaleString()}
+                      </span>
+                      <div className="w-full max-w-[48px] flex-1 flex items-end">
+                        <div
+                          className={`w-full rounded-lg transition-all duration-500 ${today ? 'bg-gradient-to-t from-green-600 to-emerald-400 shadow-md shadow-green-600/20' : 'bg-slate-200 group-hover:bg-green-300'}`}
+                          style={{ height: `${Math.max(3, (d.revenue / maxRev) * 100)}%` }}
+                          title={`${d.label}: ${currency}${Math.round(d.revenue)} from ${d.count} orders`}
+                        />
+                      </div>
+                      <span className={`text-xs ${today ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>{today ? 'Today' : d.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </Card>
 
         {/* Fleet */}
-        <Card
-          title="Delivery fleet"
-          action={<button onClick={() => navigate('/seller/agents')} className="text-xs font-semibold text-green-700 hover:underline">Manage</button>}
-        >
+        <Card title="Delivery fleet" subtitle={`${m.online.length} online · ${m.busy.length} on delivery`} action={linkBtn('Manage', '/seller/agents')}>
           {agents.length === 0 ? (
-            <div className="px-5 pb-5 text-sm text-gray-500">
-              No riders yet.{' '}
-              <button onClick={() => navigate('/seller/agents')} className="font-semibold text-green-700 underline">Add a rider</button>
-            </div>
+            <EmptyState icon="truck" title="No riders yet" text="Add a delivery partner to start dispatching."
+              action={<Button size="sm" icon="plus" onClick={() => navigate('/seller/agents')}>Add a rider</Button>} />
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="px-2 pb-3">
               {[...agents]
                 .sort((a, b) => (b.status !== 'Inactive') - (a.status !== 'Inactive') || (b.stats?.activeOrders || 0) - (a.stats?.activeOrders || 0))
                 .slice(0, 5)
                 .map((a) => {
                   const on = !a.isBlocked && a.status !== 'Inactive';
                   return (
-                    <li key={a._id} className="flex items-center gap-3 px-5 py-2.5">
+                    <li key={a._id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50">
                       <span className="relative">
-                        <span className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 text-xs font-bold flex items-center justify-center uppercase">{a.name.slice(0, 2)}</span>
-                        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${a.isBlocked ? 'bg-red-500' : a.status === 'On Delivery' ? 'bg-violet-500' : on ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        <Avatar name={a.name} size="sm" tone={a.isBlocked ? 'red' : on ? 'green' : 'slate'} />
+                        <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white ${a.isBlocked ? 'bg-red-500' : a.status === 'On Delivery' ? 'bg-violet-500' : on ? 'bg-green-500' : 'bg-slate-300'}`} />
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{a.name}</p>
-                        <p className="text-xs text-gray-500">{a.isBlocked ? 'Blocked' : a.status === 'On Delivery' ? `${a.stats?.activeOrders || 0} active` : on ? 'Available' : 'Offline'} · {a.stats?.todayDeliveries || 0} today</p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">{a.name}</p>
+                        <p className="text-xs text-slate-500">{a.isBlocked ? 'Blocked' : a.status === 'On Delivery' ? `${a.stats?.activeOrders || 0} active` : on ? 'Available' : 'Offline'} · {a.stats?.todayDeliveries || 0} today</p>
                       </div>
-                      {(a.stats?.cashInHand || 0) > 0 && <span className="text-xs font-bold text-orange-600">{currency}{a.stats.cashInHand}</span>}
+                      {(a.stats?.cashInHand || 0) > 0 && <Badge tone="orange">{currency}{a.stats.cashInHand}</Badge>}
                     </li>
                   );
                 })}
@@ -370,89 +359,82 @@ const SellerDashboard = () => {
         </Card>
 
         {/* Recent orders */}
-        <Card
-          className="xl:col-span-2 overflow-hidden"
-          title="Recent orders"
-          action={<button onClick={() => navigate('/seller/orders')} className="text-xs font-semibold text-green-700 hover:underline">View all</button>}
-        >
+        <Card className="xl:col-span-2 overflow-hidden" title="Recent orders" subtitle="Latest activity across your store" action={linkBtn('View all', '/seller/orders')}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-500 border-y border-gray-100 bg-gray-50/60">
-                  <th className="px-5 py-2.5 font-semibold">Order</th>
-                  <th className="px-3 py-2.5 font-semibold">Customer</th>
-                  <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Rider</th>
-                  <th className="px-3 py-2.5 font-semibold text-right">Amount</th>
-                  <th className="px-5 py-2.5 font-semibold">Status</th>
+                <tr className="text-left text-xs text-slate-500 border-y border-slate-100 bg-slate-50/70">
+                  <th className="px-5 py-2.5 font-medium">Order</th>
+                  <th className="px-3 py-2.5 font-medium">Customer</th>
+                  <th className="hidden sm:table-cell px-3 py-2.5 font-medium">Rider</th>
+                  <th className="px-3 py-2.5 font-medium text-right">Amount</th>
+                  <th className="px-5 py-2.5 font-medium">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-slate-100">
                 {orders.slice(0, 8).map((o) => (
-                  <tr key={o._id} onClick={() => navigate('/seller/orders')} className="hover:bg-gray-50 cursor-pointer">
+                  <tr key={o._id} onClick={() => navigate('/seller/orders')} className="hover:bg-slate-50/70 cursor-pointer transition-colors">
                     <td className="px-5 py-3">
-                      <p className="font-semibold text-gray-900">#{shortId(o._id)}</p>
-                      <p className="text-xs text-gray-400">{new Date(o.createdAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="font-semibold text-slate-900">#{shortId(o._id)}</p>
+                      <p className="text-xs text-slate-400">{new Date(o.createdAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                     </td>
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">{o.address?.firstName} {o.address?.lastName}</td>
-                    <td className="hidden sm:table-cell px-3 py-3 text-gray-500 whitespace-nowrap">{o.assignedTo?.name || '—'}</td>
-                    <td className="px-3 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">{currency}{o.amount}</td>
+                    <td className="px-3 py-3 text-slate-700 whitespace-nowrap">{o.address?.firstName} {o.address?.lastName}</td>
+                    <td className="hidden sm:table-cell px-3 py-3 text-slate-500 whitespace-nowrap">{o.assignedTo?.name || '—'}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-slate-900 whitespace-nowrap tabular-nums">{currency}{o.amount}</td>
                     <td className="px-5 py-3">
-                      <span className={`inline-block whitespace-nowrap text-[11px] font-bold px-2 py-0.5 rounded-md border ${STATUS_STYLE[o.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>{o.status}</span>
+                      <span className={`inline-block whitespace-nowrap text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${STATUS_STYLE[o.status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>{o.status}</span>
                     </td>
                   </tr>
                 ))}
-                {orders.length === 0 && (
-                  <tr><td colSpan="5" className="px-5 py-10 text-center text-sm text-gray-400">No orders yet</td></tr>
-                )}
               </tbody>
             </table>
+            {orders.length === 0 && <EmptyState icon="orders" title="No orders yet" text="New orders will show up here as they come in." />}
           </div>
         </Card>
 
         {/* Inventory + top sellers */}
         <div className="space-y-4 md:space-y-6">
-          <Card
-            title="Inventory alerts"
-            action={<button onClick={() => navigate('/seller/product-list')} className="text-xs font-semibold text-green-700 hover:underline">Products</button>}
-          >
-            <div className="px-5 pb-2 grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-red-50 px-3 py-2">
-                <p className="text-xs text-red-700">Out of stock</p>
-                <p className="text-lg font-bold text-red-700">{m.outOfStock.length}</p>
+          <Card title="Inventory alerts" action={linkBtn('Products', '/seller/product-list')}>
+            <div className="px-5 grid grid-cols-2 gap-2.5">
+              <div className="rounded-xl bg-red-50 ring-1 ring-inset ring-red-100 px-3.5 py-2.5">
+                <p className="text-xs font-medium text-red-700">Out of stock</p>
+                <p className="text-xl font-semibold text-red-700 tabular-nums">{m.outOfStock.length}</p>
               </div>
-              <div className="rounded-xl bg-amber-50 px-3 py-2">
-                <p className="text-xs text-amber-700">Low (&lt; 5)</p>
-                <p className="text-lg font-bold text-amber-700">{m.lowStock.length}</p>
+              <div className="rounded-xl bg-amber-50 ring-1 ring-inset ring-amber-100 px-3.5 py-2.5">
+                <p className="text-xs font-medium text-amber-700">Low (&lt; 5)</p>
+                <p className="text-xl font-semibold text-amber-700 tabular-nums">{m.lowStock.length}</p>
               </div>
             </div>
-            <ul className="px-5 pb-4 pt-2 space-y-2">
+            <ul className="px-5 pb-5 pt-3 space-y-2.5">
               {[...m.outOfStock, ...m.lowStock].slice(0, 5).map((p) => (
                 <li key={p._id} className="flex items-center gap-3">
-                  <img src={optimizeImg(p.image?.[0], 80)} alt="" className="w-8 h-8 rounded-lg bg-gray-50 object-contain" />
-                  <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">{p.name}</span>
-                  <span className={`text-xs font-bold ${p.stock <= 0 ? 'text-red-600' : 'text-amber-600'}`}>{p.stock <= 0 ? 'Out' : `${p.stock} left`}</span>
+                  <img src={optimizeImg(p.image?.[0], 80)} alt="" className="w-9 h-9 rounded-lg bg-slate-50 ring-1 ring-slate-100 object-contain p-0.5" />
+                  <span className="flex-1 min-w-0 text-sm text-slate-700 truncate">{p.name}</span>
+                  <Badge tone={p.stock <= 0 ? 'red' : 'amber'}>{p.stock <= 0 ? 'Out' : `${p.stock} left`}</Badge>
                 </li>
               ))}
-              {m.outOfStock.length + m.lowStock.length === 0 && <li className="text-sm text-gray-500">All products well stocked.</li>}
+              {m.outOfStock.length + m.lowStock.length === 0 && (
+                <li className="flex items-center gap-2 text-sm text-slate-500"><Icon name="check" className="w-4 h-4 text-green-600" /> All products well stocked.</li>
+              )}
             </ul>
           </Card>
 
-          <Card title="Top sellers · 30 days">
-            <ul className="px-5 pb-4 space-y-2">
-              {m.topSellers.length === 0 && <li className="text-sm text-gray-500">No sales in the last 30 days.</li>}
+          <Card title="Top sellers" subtitle="Last 30 days, by units">
+            <ul className="px-5 pb-5 space-y-2.5">
+              {m.topSellers.length === 0 && <li className="text-sm text-slate-500">No sales in the last 30 days.</li>}
               {m.topSellers.map(({ product, qty }, i) => (
                 <li key={product._id} className="flex items-center gap-3">
-                  <span className="w-5 text-xs font-bold text-gray-400">{i + 1}</span>
-                  <img src={optimizeImg(product.image?.[0], 80)} alt="" className="w-8 h-8 rounded-lg bg-gray-50 object-contain" />
-                  <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">{product.name}</span>
-                  <span className="text-xs font-bold text-gray-900">{qty} sold</span>
+                  <span className={`w-6 h-6 rounded-md text-[11px] font-semibold flex items-center justify-center ${i === 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>{i + 1}</span>
+                  <img src={optimizeImg(product.image?.[0], 80)} alt="" className="w-9 h-9 rounded-lg bg-slate-50 ring-1 ring-slate-100 object-contain p-0.5" />
+                  <span className="flex-1 min-w-0 text-sm text-slate-700 truncate">{product.name}</span>
+                  <span className="text-xs font-semibold text-slate-900 tabular-nums">{qty} sold</span>
                 </li>
               ))}
             </ul>
           </Card>
         </div>
       </div>
-    </div>
+    </Page>
   );
 };
 

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import toast from 'react-hot-toast';
-import { assets } from '../../assets/assets';
 import { useNavigate } from 'react-router-dom';
+import { optimizeImg } from '../../utils/image';
+import { Page, PageHeader, StatCard, Badge, Button, EmptyState, SearchInput, Segmented, Icon, inputCls } from '../../components/Seller/ui';
 
 const ProductList = () => {
   const { products, currency, axios, fetchProducts, confirmAction, categories: allCategories } = useAppContext();
@@ -19,7 +20,7 @@ const ProductList = () => {
       const { data } = await axios.post('/api/product/update', { id, category });
       if (data.success) {
         fetchProducts();
-        toast.success("Category updated successfully");
+        toast.success("Category updated");
       } else {
         toast.error(data.message);
       }
@@ -44,13 +45,13 @@ const ProductList = () => {
 
   const deleteProduct = async (id) => {
     confirmAction(
-      "Delete Product",
+      "Delete product",
       "Are you sure you want to delete this product? This action cannot be undone.",
       async () => {
         try {
           const { data } = await axios.delete(`/api/product/remove/${id}`);
           if (data.success) {
-            toast.success("Product Deleted");
+            toast.success("Product deleted");
             fetchProducts();
           } else {
             toast.error(data.message);
@@ -63,140 +64,100 @@ const ProductList = () => {
     );
   };
 
-  // Filter logic
+  const lowStock = (p) => p.stock > 0 && p.stock < 5;
+
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'All' || product.category === filterCategory;
     const matchesStock = filterStock === 'All'
       ? true
-      : filterStock === 'Active Stock'
+      : filterStock === 'In stock'
         ? product.stock > 0
-        : product.stock <= 0;
+        : filterStock === 'Low'
+          ? lowStock(product)
+          : product.stock <= 0;
     return matchesSearch && matchesCategory && matchesStock;
   });
 
   const inStockCount = products.filter(p => p.stock > 0).length;
+  const lowCount = products.filter(lowStock).length;
   const outOfStockCount = products.filter(p => p.stock <= 0).length;
 
   return (
-    <div className="p-8 bg-[#fcfcfc] min-h-screen">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight tracking-[-0.04em]">Inventory Management</h1>
-          <p className="text-gray-400 font-semibold mt-1 text-sm">Maintain and monitor your digital storefront.</p>
-        </div>
-        <button
-          onClick={() => navigate('/seller/add-product')}
-          className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-[1.25rem] font-bold transition-all shadow-lg shadow-green-500/20 flex items-center gap-2 text-sm"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Add New Product
-        </button>
+    <Page>
+      <PageHeader
+        title="Products"
+        subtitle="Manage prices, stock levels and categories for your catalogue."
+        actions={<Button icon="plus" onClick={() => navigate('/seller/add-product')}>Add product</Button>}
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <StatCard label="Total products" value={products.length} icon="box" tone="slate" hint={`${allCategories.length} categories`} />
+        <StatCard label="In stock" value={inStockCount} icon="check" tone="green" hint="Available to customers" />
+        <StatCard label="Low stock" value={lowCount} icon="alert" tone="amber" hint="Fewer than 5 left" valueClass={lowCount ? 'text-amber-600' : 'text-slate-900'} />
+        <StatCard label="Out of stock" value={outOfStockCount} icon="ban" tone="red" hint="Hidden from sale" valueClass={outOfStockCount ? 'text-red-600' : 'text-slate-900'} />
       </div>
 
-      {/* Quick Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-12">
-        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100/50">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">Total Catalog</p>
-          <h3 className="text-4xl font-bold text-gray-900">{products.length}</h3>
-        </div>
-        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100/50">
-          <p className="text-[11px] font-bold text-green-500 uppercase tracking-widest mb-2">Active Stock</p>
-          <h3 className="text-4xl font-bold text-gray-900">{inStockCount}</h3>
-        </div>
-        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100/50">
-          <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest mb-2">Zero Stock</p>
-          <h3 className="text-4xl font-bold text-gray-900">{outOfStockCount}</h3>
-        </div>
-      </div>
-
-      {/* Filters and Table Section */}
-      <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100/60 overflow-hidden">
-        {/* Search & Filter Bar */}
-        <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row gap-6 items-center justify-between bg-gray-50/20">
-          <div className="relative w-full md:w-[400px]">
-            <img src={assets.search_icon} className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-30" alt="" />
-            <input
-              type="text"
-              placeholder="Filter by product name..."
-              className="w-full bg-white pl-14 pr-6 py-4 rounded-2xl border border-gray-100 focus:outline-none focus:ring-4 focus:ring-green-500/5 focus:border-green-500/30 text-sm font-semibold transition-all placeholder:text-gray-300"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+        {/* Toolbar */}
+        <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
+          <div className="min-w-0">
+            <Segmented
+              value={filterStock}
+              onChange={setFilterStock}
+              options={[
+                { key: 'All', count: products.length },
+                { key: 'In stock', count: inStockCount },
+                { key: 'Low', label: 'Low stock', count: lowCount },
+                { key: 'Out', label: 'Out of stock', count: outOfStockCount },
+              ]}
             />
           </div>
-
-          <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden lg:block">Category:</span>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="w-full md:w-44 bg-white px-5 py-3.5 rounded-2xl border border-gray-100 text-[11px] font-bold uppercase tracking-wider focus:outline-none focus:ring-4 focus:ring-green-500/5 transition-all cursor-pointer shadow-sm"
-              >
-                {filterCategories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden lg:block">Inventory:</span>
-              <select
-                value={filterStock}
-                onChange={(e) => setFilterStock(e.target.value)}
-                className="w-full md:w-44 bg-white px-5 py-3.5 rounded-2xl border border-gray-100 text-[11px] font-bold uppercase tracking-wider focus:outline-none focus:ring-4 focus:ring-green-500/5 transition-all cursor-pointer shadow-sm"
-              >
-                <option value="All">All Stock</option>
-                <option value="Active Stock">Active Stock</option>
-                <option value="Zero Stock">Zero Stock</option>
-              </select>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <SearchInput className="w-full sm:w-64" placeholder="Search products" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={`${inputCls} sm:w-48 cursor-pointer`} aria-label="Filter by category">
+              {filterCategories.map(cat => (
+                <option key={cat} value={cat}>{cat === 'All' ? 'All categories' : cat}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Desktop Table View */}
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50/20 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
-                <th className="px-10 py-6">Product Information</th>
-                <th className="px-8 py-6">Category</th>
-                <th className="px-8 py-6">Price</th>
-                <th className="px-8 py-6 text-center">In Stock</th>
-                <th className="px-10 py-6 text-right">Actions</th>
+              <tr className="bg-slate-50/70 text-left text-xs text-slate-500 border-b border-slate-100">
+                <th className="px-5 py-3 font-medium">Product</th>
+                <th className="px-4 py-3 font-medium">Category</th>
+                <th className="px-4 py-3 font-medium">Price</th>
+                <th className="px-4 py-3 font-medium">Stock</th>
+                <th className="px-5 py-3 font-medium text-right"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50/50">
-              {filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-24 text-center">
-                    <div className="flex flex-col items-center opacity-30">
-                      <img src={assets.box_icon} className="w-16 h-16 mb-4 grayscale" alt="" />
-                      <h4 className="text-gray-900 font-bold text-xl uppercase tracking-widest">Storefront Empty</h4>
-                      <p className="text-gray-500 font-semibold text-sm">No items found matching your filters.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((product) => (
-                  <tr key={product._id} className="hover:bg-gray-50/40 transition-colors group">
-                    <td className="px-10 py-6">
-                      <div className="flex items-center gap-5">
-                        <div className="w-20 h-20 rounded-2xl border border-gray-100 p-3 bg-white shrink-0 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform">
-                          <img src={product.image[0]} alt="" className="w-full h-full object-contain" />
+            <tbody className="divide-y divide-slate-100">
+              {filteredProducts.map((product) => {
+                const out = product.stock <= 0;
+                const low = lowStock(product);
+                const discount = product.price > product.offerPrice ? Math.round(((product.price - product.offerPrice) / product.price) * 100) : 0;
+                return (
+                  <tr key={product._id} className="hover:bg-slate-50/70 transition-colors group">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3.5 min-w-[220px]">
+                        <div className="w-12 h-12 rounded-xl ring-1 ring-slate-200/70 p-1.5 bg-white shrink-0 flex items-center justify-center">
+                          <img src={optimizeImg(product.image?.[0], 120)} alt="" className="w-full h-full object-contain" />
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <p className="font-bold text-gray-900 text-lg leading-tight group-hover:text-green-600 transition-colors">{product.name}</p>
-                          {product.weight && <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{product.weight}</p>}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 leading-snug line-clamp-2">{product.name}</p>
+                          {product.weight && <p className="text-xs text-slate-500 mt-0.5">{product.weight}</p>}
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 whitespace-nowrap">
+                    <td className="px-4 py-3.5 whitespace-nowrap">
                       <select
                         value={product.category}
                         onChange={(e) => updateProductCategory(product._id, e.target.value)}
-                        className="bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none cursor-pointer border border-gray-100 transition-all shadow-sm focus:ring-4 focus:ring-green-500/5 focus:border-green-200"
+                        className="h-8 rounded-lg border border-slate-200 bg-white hover:border-slate-300 px-2.5 text-xs font-medium text-slate-700 outline-none cursor-pointer transition focus:border-green-500 focus:ring-4 focus:ring-green-500/10"
+                        aria-label="Category"
                       >
                         {/* Ensure current category is always an option even if not in allCategories */}
                         {[...new Set([...allCategories.map(c => c.name), product.category])].filter(Boolean).map((catName, idx) => (
@@ -204,57 +165,57 @@ const ProductList = () => {
                         ))}
                       </select>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <span className="text-lg font-bold text-gray-900">{currency}{product.offerPrice}</span>
-                        {product.price > product.offerPrice && (
-                          <span className="text-[10px] text-gray-300 line-through font-bold uppercase">MRP {currency}{product.price}</span>
-                        )}
-                      </div>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <p className="font-semibold text-slate-900 tabular-nums">{currency}{product.offerPrice}</p>
+                      {discount > 0 && (
+                        <p className="text-xs text-slate-400 tabular-nums">
+                          <span className="line-through">{currency}{product.price}</span>
+                          <span className="ml-1.5 text-green-700 font-medium">{discount}% off</span>
+                        </p>
+                      )}
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col items-center gap-3">
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-2.5">
                         <input
                           type="number"
                           value={product.stock}
                           onChange={(e) => updateStockValue(product._id, e.target.value)}
-                          className={`w-20 text-center py-2 rounded-[1.25rem] border-2 font-bold text-sm outline-none transition-all shadow-sm ${product.stock <= 0 ? 'bg-red-50 border-red-100 text-red-600' : product.stock < 5 ? 'bg-orange-50 border-orange-100 text-orange-600' : 'bg-green-50 border-green-100 text-green-700 focus:ring-4 focus:ring-green-500/5'}`}
+                          aria-label="Stock"
+                          className={`w-20 h-8 text-center rounded-lg border text-sm font-semibold outline-none tabular-nums transition focus:ring-4 ${out ? 'bg-red-50 border-red-200 text-red-700 focus:ring-red-500/10' : low ? 'bg-amber-50 border-amber-200 text-amber-700 focus:ring-amber-500/10' : 'bg-white border-slate-200 text-slate-900 focus:border-green-500 focus:ring-green-500/10'}`}
                         />
-                        {product.stock <= 0 ? (
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-red-500/80 bg-red-50 px-2.5 py-1 rounded-md">Sold Out</span>
-                        ) : product.stock < 5 ? (
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-orange-500/80 bg-orange-50 px-2.5 py-1 rounded-md">Low Inventory</span>
-                        ) : (
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-green-600/80 bg-green-50 px-2.5 py-1 rounded-md">Standard</span>
-                        )}
+                        {out ? <Badge tone="red" dot>Sold out</Badge> : low ? <Badge tone="amber" dot>Low</Badge> : <Badge tone="green" dot>In stock</Badge>}
                       </div>
                     </td>
-                    <td className="px-10 py-6 text-right">
+                    <td className="px-5 py-3.5 text-right">
                       <button
                         onClick={() => deleteProduct(product._id)}
-                        className="w-12 h-12 rounded-2xl bg-red-50/50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm group/btn"
-                        title="Permanently Delete"
+                        className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                        title="Delete product"
+                        aria-label="Delete product"
                       >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" /></svg>
+                        <Icon name="trash" className="w-[18px] h-[18px]" />
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })}
             </tbody>
           </table>
+          {filteredProducts.length === 0 && (
+            <EmptyState
+              icon="box"
+              title={products.length ? 'No matching products' : 'No products yet'}
+              text={products.length ? 'Try a different search or filter.' : 'Add your first product to start selling.'}
+              action={!products.length && <Button icon="plus" size="sm" onClick={() => navigate('/seller/add-product')}>Add product</Button>}
+            />
+          )}
         </div>
 
-        <div className="p-10 bg-gray-50/20 border-t border-gray-50 flex justify-between items-center mt-4">
-          <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em]">End of Storage Index</p>
-          <div className="flex items-center gap-4">
-            <p className="text-[11px] font-bold text-gray-900 bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100">
-              {filteredProducts.length} ARTICLES ACTIVE
-            </p>
-          </div>
+        <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+          Showing <span className="font-semibold text-slate-900">{filteredProducts.length}</span> of {products.length} products
         </div>
-      </div>
-    </div>
+      </section>
+    </Page>
   );
 };
 
